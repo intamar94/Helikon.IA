@@ -23,8 +23,8 @@ export default function Home() {
     async function cargar() {
       const [{ data: nodosData, error: nodosError }, { data: aristasData, error: aristasError }] =
         await Promise.all([
-          supabase!.from("nodos").select("*").order("numero", { ascending: true }),
-          supabase!.from("aristas").select("origen,destino").eq("tipo", "prerrequisito"),
+          supabase!.from("helikon_nodos").select("*").order("numero", { ascending: true }),
+          supabase!.from("helikon_aristas").select("origen,destino").eq("tipo", "prerrequisito"),
         ]);
 
       if (nodosError || aristasError) {
@@ -55,7 +55,7 @@ export default function Home() {
 
     async function cargarProgreso() {
       const { data, error: progresoError } = await supabase!
-        .from("usuario_progreso")
+        .from("helikon_usuario_progreso")
         .select("nodo_id")
         .eq("usuario_id", usuarioId)
         .eq("estado", "dominado");
@@ -88,7 +88,7 @@ export default function Home() {
 
   async function marcarDominado(id: string) {
     if (!supabase || !usuarioId) return;
-    const { error: upsertError } = await supabase.from("usuario_progreso").upsert(
+    const { error: upsertError } = await supabase.from("helikon_usuario_progreso").upsert(
       {
         usuario_id: usuarioId,
         nodo_id: id,
