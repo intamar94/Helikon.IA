@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helikon.IA — Prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0D12; --panel:#12161F; --panel-2:#171C27; --line:#232938;
+    --text:#E7EAF0; --muted:#77808F; --muted-2:#4E5563;
+    --broken:#FF5C5C; --ok:#34D399; --amber:#F5B142; --accent:#6E8CFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .app{max-width:760px;margin:0 auto;padding:16px 14px 60px;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px;}
+  .brand{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);}
+  .brand b{color:var(--text);}
+  .stat{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);}
+
+  .progressbar{height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-bottom:16px;}
+  .progressfill{height:100%;background:var(--ok);border-radius:3px;transition:width .3s;}
+
+  .rama{margin-bottom:18px;}
+  .rama-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+  .nodos{display:flex;flex-wrap:wrap;gap:8px;}
+
+  .nodo{
+    border:1px solid var(--line); border-radius:9px; padding:9px 12px;
+    background:var(--panel); cursor:pointer; min-width:132px; flex:1 1 45%;
+  }
+  .nodo.dominado{border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.06);}
+  .nodo.disponible{border-color:rgba(110,140,255,.5);}
+  .nodo.bloqueado{opacity:.4; cursor:not-allowed;}
+  .nodo .num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted-2);}
+  .nodo .nom{font-size:12.5px;font-weight:500;margin-top:2px;}
+  .nodo .estado{font-family:'IBM Plex Mono',monospace;font-size:9.5px;margin-top:4px;}
+  .nodo.dominado .estado{color:var(--ok);}
+  .nodo.disponible .estado{color:var(--accent);}
+  .nodo.bloqueado .estado{color:var(--muted-2);}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+  .overlay.open{display:flex;}
+  .sheet{
+    background:var(--panel); border:1px solid var(--line); border-top-left-radius:16px; border-top-right-radius:16px;
+    max-width:760px; width:100%; padding:20px 18px 24px; max-height:85vh; overflow-y:auto;
+  }
+  .sheet-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .sheet-title{font-size:18px;font-weight:600;margin-bottom:14px;}
+  .campo{margin-bottom:12px;}
+  .campo .k{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+  .campo .v{font-size:13px;line-height:1.5;color:var(--text);}
+  .prereq-list{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:14px;}
+
+  .btn{display:block;width:100%;background:var(--accent);color:#0A0D12;border:none;border-radius:8px;padding:11px;font-weight:600;font-size:14px;cursor:pointer;margin-top:6px;}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);}
+  .btn:disabled{opacity:.4;}
+  .close{position:absolute;top:14px;right:16px;color:var(--muted);font-size:20px;cursor:pointer;background:none;border:none;}
+  .sheet{position:relative;}
+
+  .footnote{text-align:center;font-size:11px;color:var(--muted-2);margin-top:16px;font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">🏔 <b>Helikon.IA</b> — Ingeniería de Software + Biología vegetal</div>
+    <div class="stat" id="statTxt">0/36 dominados</div>
+  </div>
+  <div class="progressbar"><div class="progressfill" id="progressFill" style="width:0%"></div></div>
+  <div id="ramas"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <button class="close" onclick="closeSheet()">✕</button>
+    <div id="sheetContent"></div>
+  </div>
+</div>
+
+<script>
+const NODOS = [
+{"id":"L","numero":1,"nombre":"Lógica de programación","rama":"Fundamentos","prerequisitos":[],"objetivo":"Resolver problemas con condicionales y loops","construir":"5 problemas cortos (ej. FizzBuzz)","romper":"Casos límite: negativos, cero, texto en vez de número","resolver":"Por qué validar el tipo de dato antes de operar"},
+{"id":"V","numero":2,"nombre":"Variables y control de flujo","rama":"Fundamentos","prerequisitos":["L"],"objetivo":"Manejar reglas anidadas de decisión","construir":"Programa que calcula descuentos con reglas anidadas","romper":"Condiciones contradictorias, loops infinitos","resolver":"Orden de evaluación, por qué un loop no termina"},
+{"id":"F","numero":3,"nombre":"Funciones y estructuras de datos","rama":"Fundamentos","prerequisitos":["V"],"objetivo":"Procesar listas de datos con funciones","construir":"Función que procesa pedidos y devuelve totales","romper":"Lista vacía, datos duplicados, tipos mezclados","resolver":"Por qué separar responsabilidades evita bugs en cadena"},
+{"id":"POO","numero":4,"nombre":"Programación orientada a objetos","rama":"Fundamentos","prerequisitos":["F"],"objetivo":"Modelar entidades del mundo real como clases","construir":"Clases Usuario y Pedido con métodos","romper":"Herencia mal diseñada que rompe un caso no previsto","resolver":"Composición vs herencia"},
+{"id":"REQ","numero":37,"nombre":"Ingeniería de requerimientos","rama":"Diseño y requerimientos","prerequisitos":["POO"],"objetivo":"Transformar una necesidad del cliente en requisitos claros y verificables","construir":"Historias de usuario y criterios de aceptación para un pedido ambiguo","romper":"El cliente pide algo contradictorio (\"que sea rápido y guarde todo el historial\")","resolver":"Por qué un requisito ambiguo genera bugs de diseño, no de código"},
+{"id":"DIS","numero":38,"nombre":"Diseño de software","rama":"Diseño y requerimientos","prerequisitos":["REQ"],"objetivo":"Traducir requisitos en una estructura concreta antes de programar","construir":"Diagramar componentes y su comunicación para el sistema de pedidos","romper":"Dos componentes que deberían estar separados terminan mezclados (acoplamiento)","resolver":"Por qué diseñar antes de programar ahorra reescritura después"},
+{"id":"TESTB","numero":5,"nombre":"Testing básico","rama":"Fundamentos","prerequisitos":["F"],"objetivo":"Escribir tests para código ya hecho","construir":"3 tests para una función existente","romper":"Un cambio rompe un test sin que se note al principio","resolver":"Por qué un test que nunca falla no sirve"},
+{"id":"ERR","numero":6,"nombre":"Manejo de errores y logging","rama":"Fundamentos","prerequisitos":["F","POO"],"objetivo":"Capturar y loguear errores con contexto","construir":"Capturar errores de una función y loguearlos","romper":"Un error silencioso esconde el problema real","resolver":"Fallar rápido vs fallar en silencio"},
+{"id":"ALG","numero":52,"nombre":"Algoritmos y complejidad","rama":"Fundamentos","prerequisitos":["F"],"objetivo":"Entender por qué una solución es más rápida que otra","construir":"Comparar dos formas de resolver el mismo problema (fuerza bruta vs optimizada)","romper":"La solución funciona con 10 datos pero se cuelga con 100.000","resolver":"Qué es la complejidad (Big-O) y por qué importa antes de escalar"},
+
+{"id":"SQL","numero":7,"nombre":"SQL básico","rama":"Bases de datos","prerequisitos":["L"],"objetivo":"Consultar y modificar datos con SQL","construir":"SELECT/INSERT/UPDATE sobre tabla de productos","romper":"Query sin WHERE que borra de más","resolver":"Por qué siempre revisar el WHERE antes de ejecutar"},
+{"id":"MOD","numero":8,"nombre":"Modelado relacional","rama":"Bases de datos","prerequisitos":["SQL"],"objetivo":"Diseñar tablas relacionadas correctamente","construir":"Tablas para un sistema de pedidos","romper":"Datos duplicados por mal diseño","resolver":"Normalización y claves foráneas"},
+{"id":"TRX","numero":9,"nombre":"Transacciones","rama":"Bases de datos","prerequisitos":["MOD"],"objetivo":"Garantizar operaciones todo-o-nada","construir":"Transferencia de saldo entre dos cuentas","romper":"La transferencia se corta a mitad de camino","resolver":"Atomicidad"},
+{"id":"CONC","numero":10,"nombre":"Concurrencia en bases de datos","rama":"Bases de datos","prerequisitos":["TRX"],"objetivo":"Evitar inconsistencias con usuarios simultáneos","construir":"Endpoint de compra con control de stock","romper":"100 compras simultáneas del último producto","resolver":"Race conditions, locks (FOR UPDATE)"},
+
+{"id":"HTTP","numero":11,"nombre":"HTTP básico","rama":"Backend","prerequisitos":[],"objetivo":"Entender el protocolo detrás de toda API","construir":"Identificar método, headers y body en requests reales","romper":"Request mal formado, código de estado incorrecto","resolver":"Qué significa cada código HTTP"},
+{"id":"REST","numero":12,"nombre":"APIs REST","rama":"Backend","prerequisitos":["HTTP","F"],"objetivo":"Diseñar un CRUD completo","construir":"CRUD de tareas","romper":"Endpoint que acepta cualquier dato sin validar","resolver":"Diseño de recursos, verbos HTTP correctos"},
+{"id":"AUTH","numero":13,"nombre":"Autenticación","rama":"Backend","prerequisitos":["REST"],"objetivo":"Proteger endpoints con login real","construir":"Login con token JWT","romper":"Token robado o expirado usado para acceder","resolver":"Expiración, refresh tokens"},
+{"id":"ORM","numero":14,"nombre":"ORMs","rama":"Backend","prerequisitos":["MOD","POO"],"objetivo":"Reemplazar SQL crudo por un ORM","construir":"CRUD de tareas con ORM","romper":"N+1 queries sin darse cuenta","resolver":"Eager loading, costos ocultos del ORM"},
+{"id":"TEST","numero":15,"nombre":"Testing backend","rama":"Backend","prerequisitos":["REST","TESTB"],"objetivo":"Probar una API completa","construir":"Suite de tests de integración","romper":"Test pasa en local pero falla en CI","resolver":"Entornos inconsistentes, datos de prueba mal aislados"},
+{"id":"ASYNC","numero":16,"nombre":"Colas y procesamiento asíncrono","rama":"Backend","prerequisitos":["REST"],"objetivo":"No bloquear al usuario con tareas lentas","construir":"Enviar email de confirmación sin bloquear la respuesta","romper":"La cola se satura y los mensajes se pierden","resolver":"Reintentos, dead-letter queue"},
+
+{"id":"HTML","numero":17,"nombre":"HTML y CSS","rama":"Frontend","prerequisitos":[],"objetivo":"Maquetar una interfaz","construir":"Página de perfil de usuario","romper":"Se rompe en pantallas chicas","resolver":"Diseño responsive"},
+{"id":"JS","numero":18,"nombre":"JavaScript básico","rama":"Frontend","prerequisitos":[],"objetivo":"Validar datos del lado del cliente","construir":"Validar un formulario antes de enviarlo","romper":"Usuario ingresa datos inesperados","resolver":"Validación cliente vs servidor"},
+{"id":"DOM","numero":19,"nombre":"DOM y eventos","rama":"Frontend","prerequisitos":["JS","HTML"],"objetivo":"Actualizar la página sin recargar","construir":"Lista de tareas dinámica","romper":"Clics rápidos generan tareas duplicadas","resolver":"Debounce"},
+{"id":"FE","numero":20,"nombre":"Frameworks frontend","rama":"Frontend","prerequisitos":["DOM"],"objetivo":"Reconstruir la UI con React","construir":"Lista de tareas en React","romper":"El componente se re-renderiza infinito","resolver":"Dependencias mal declaradas en efectos"},
+{"id":"STATE","numero":21,"nombre":"Estado y componentes","rama":"Frontend","prerequisitos":["FE"],"objetivo":"Compartir estado entre pantallas","construir":"Estado de usuario logueado compartido","romper":"Dos componentes muestran datos distintos","resolver":"Fuente única de verdad"},
+
+{"id":"SO","numero":22,"nombre":"Sistemas operativos básico","rama":"Sistemas","prerequisitos":["L"],"objetivo":"Manejar procesos desde la terminal","construir":"Manejar procesos y archivos por terminal","romper":"Proceso que no termina y consume memoria","resolver":"Qué es un proceso, cómo matarlo bien"},
+{"id":"PROC","numero":23,"nombre":"Procesos y aislamiento","rama":"Sistemas","prerequisitos":["SO"],"objetivo":"Correr apps sin que choquen entre sí","construir":"Dos versiones de la misma app sin conflicto","romper":"Conflicto de puertos, dependencias incompatibles","resolver":"Qué problema resuelve el aislamiento"},
+{"id":"RED","numero":24,"nombre":"Redes básicas","rama":"Sistemas","prerequisitos":["HTTP"],"objetivo":"Conectar dos servicios entre sí","construir":"Dos servicios que se comunican en red","romper":"Uno no encuentra al otro","resolver":"Resolución de direcciones y puertos"},
+{"id":"SEG","numero":25,"nombre":"Seguridad básica","rama":"Sistemas","prerequisitos":["RED","AUTH"],"objetivo":"Proteger un endpoint sensible","construir":"Endpoint con permisos","romper":"Acceso sin autorización, inyección SQL básica","resolver":"Mínimo privilegio, sanitización de inputs"},
+
+{"id":"GIT","numero":26,"nombre":"Git básico","rama":"DevOps","prerequisitos":[],"objetivo":"Versionar cambios de código","construir":"Primer commit e historial","romper":"Commit que borra trabajo de otro","resolver":"Por qué revisar antes de commit/push"},
+{"id":"GITCOL","numero":27,"nombre":"Git colaborativo (branches y PRs)","rama":"DevOps","prerequisitos":["GIT"],"objetivo":"Trabajar en equipo sin pisarse","construir":"Dos personas con ramas separadas","romper":"Conflicto de merge","resolver":"Cómo resolver un conflicto sin perder trabajo"},
+{"id":"CI","numero":28,"nombre":"CI/CD","rama":"DevOps","prerequisitos":["GITCOL","TEST"],"objetivo":"Automatizar tests en cada push","construir":"Pipeline que corre tests automáticamente","romper":"Pipeline en verde pero el deploy falla igual","resolver":"Tests pasan ≠ listo para producción"},
+{"id":"DOCK","numero":29,"nombre":"Contenedores","rama":"DevOps","prerequisitos":["PROC"],"objetivo":"Empaquetar la app para que corra igual en todos lados","construir":"Contenedor de la API","romper":"Funciona en mi máquina pero no en el contenedor","resolver":"Dependencias implícitas del entorno local"},
+{"id":"CLOUD","numero":30,"nombre":"Cloud y despliegue","rama":"DevOps","prerequisitos":["DOCK"],"objetivo":"Desplegar en un servicio real","construir":"Deploy de la API en cloud","romper":"El servicio se cae bajo tráfico real","resolver":"Límites de recursos, autoescalado"},
+{"id":"MON","numero":31,"nombre":"Monitoreo y logs","rama":"DevOps","prerequisitos":["CLOUD","ERR"],"objetivo":"Ver errores y tiempos de respuesta","construir":"Dashboard simple con errores","romper":"Error crítico pasa desapercibido por falta de alertas","resolver":"Qué métricas importan de verdad"},
+
+{"id":"PAT","numero":32,"nombre":"Patrones de diseño","rama":"Arquitectura","prerequisitos":["POO","DIS"],"objetivo":"Refactorizar código repetido con criterio","construir":"Aplicar un patrón (Factory, Strategy)","romper":"Patrón aplicado donde no hace falta","resolver":"Cuándo un patrón ayuda vs cuándo sobre-ingenieriza"},
+{"id":"MICRO","numero":33,"nombre":"Microservicios","rama":"Arquitectura","prerequisitos":["REST","DOCK","ASYNC"],"objetivo":"Separar una API en servicios independientes","construir":"Separar usuarios y pedidos en 2 servicios","romper":"Un servicio cae y tumba a los demás","resolver":"Acoplamiento, tolerancia a fallos"},
+{"id":"ESCALA","numero":34,"nombre":"Escalabilidad","rama":"Arquitectura","prerequisitos":["MICRO","CONC","ALG"],"objetivo":"Soportar 10x el tráfico actual","construir":"Escalar el sistema actual","romper":"Cuello de botella en la base de datos","resolver":"Caché, réplicas, particionamiento"},
+{"id":"DIST","numero":35,"nombre":"Sistemas distribuidos","rama":"Arquitectura","prerequisitos":["ESCALA"],"objetivo":"Sincronizar datos entre instancias","construir":"Sincronizar 2 instancias del mismo servicio","romper":"Datos inconsistentes entre instancias","resolver":"Consistencia eventual"},
+
+{"id":"COMP","numero":36,"nombre":"Competencia: Ingeniero de Software base","rama":"Competencia","prerequisitos":["PAT","MICRO","CI","SEG","MON"],"objetivo":"Validar dominio integral de las 7 ramas","construir":null,"romper":null,"resolver":null},
+
+{"id":"B01","numero":39,"nombre":"Célula vegetal","rama":"Biología vegetal","prerequisitos":[],"objetivo":"Identificar estructuras y su función","construir":"Identificar cloroplasto, pared celular, vacuola en muestras reales","romper":"Célula dañada o en estado atípico, difícil de clasificar","resolver":"Qué estructura cambia según la función (fotosíntesis vs almacenamiento)"},
+{"id":"B02","numero":40,"nombre":"Fotosíntesis","rama":"Biología vegetal","prerequisitos":["B01"],"objetivo":"Entender cómo la planta produce energía con luz","construir":"Medir producción de oxígeno bajo distinta luz","romper":"Planta en oscuridad total o luz excesiva","resolver":"Por qué existe un punto óptimo de luz"},
+{"id":"B03","numero":41,"nombre":"Absorción de luz y clorofila","rama":"Biología vegetal","prerequisitos":["B02"],"objetivo":"Entender qué luz usa la planta y cuál refleja","construir":"Comparar qué colores absorbe una hoja vs cuáles refleja","romper":"Hoja que refleja distinto a lo esperado (estrés o enfermedad)","resolver":"Por qué el verde es el color que menos se absorbe"},
+{"id":"B04","numero":42,"nombre":"Estrés hídrico y nutricional en plantas","rama":"Biología vegetal","prerequisitos":["B03"],"objetivo":"Distinguir tipos de estrés en una planta","construir":"Comparar planta bien regada vs con falta de agua","romper":"Síntomas visuales ambiguos (¿agua o nutrientes?)","resolver":"Qué indicadores distinguen un tipo de estrés de otro"},
+{"id":"B05","numero":43,"nombre":"Ciclo de crecimiento y fenología vegetal","rama":"Biología vegetal","prerequisitos":["B02"],"objetivo":"Entender las etapas de crecimiento de una planta","construir":"Registrar etapas de crecimiento en el tiempo","romper":"Una etapa se salta o se retrasa por condiciones externas","resolver":"Qué factores externos alteran el ciclo esperado"},
+
+{"id":"FZ01","numero":44,"nombre":"Espectro electromagnético","rama":"Física de la luz","prerequisitos":[],"objetivo":"Distinguir qué luz es visible y cuál no","construir":"Identificar qué rango de luz es visible vs infrarrojo","romper":"Instrumento que \"ve\" en un rango equivocado","resolver":"Por qué el infrarrojo cercano es clave para medir vegetación"},
+{"id":"FZ02","numero":45,"nombre":"Reflectancia y absorción de luz en materiales","rama":"Física de la luz","prerequisitos":["FZ01"],"objetivo":"Medir cómo distintas superficies responden a la luz","construir":"Medir cuánta luz refleja hoja, tierra y agua","romper":"Superficie mojada o con polvo que altera la lectura","resolver":"Por qué hay que calibrar el instrumento antes de medir"},
+
+{"id":"D01","numero":46,"nombre":"Estadística aplicada a datos biológicos","rama":"Datos y visión","prerequisitos":["L"],"objetivo":"Sacar conclusiones confiables de mediciones biológicas","construir":"Calcular promedio, varianza y outliers en mediciones de plantas","romper":"Un sensor descalibrado distorsiona todo el promedio","resolver":"Por qué hay que filtrar outliers antes de concluir"},
+{"id":"D02","numero":47,"nombre":"Sensores e imágenes multiespectrales","rama":"Datos y visión","prerequisitos":["FZ02"],"objetivo":"Interpretar imágenes que combinan varias bandas de luz","construir":"Interpretar una imagen que combina luz visible + infrarroja","romper":"Imagen borrosa o mal calibrada","resolver":"Cómo se combina cada banda en una imagen útil"},
+{"id":"D03","numero":48,"nombre":"Índices de vegetación (NDVI)","rama":"Datos y visión","prerequisitos":["B03","D02"],"objetivo":"Medir la salud de un cultivo desde una imagen","construir":"Calcular NDVI a partir de una imagen de cultivo","romper":"Nubes o sombras que distorsionan el índice","resolver":"Por qué hay que filtrar o normalizar antes de confiar en el número"},
+{"id":"D04","numero":49,"nombre":"Visión por computadora básica","rama":"Datos y visión","prerequisitos":["F","POO","D02"],"objetivo":"Detectar formas en una imagen con código","construir":"Programa que detecta el contorno de una hoja en una foto","romper":"Hoja superpuesta con otra, fondo con color parecido","resolver":"Por qué el contraste y el fondo importan tanto como el algoritmo"},
+{"id":"D05","numero":50,"nombre":"Modelos de clasificación aplicados a plantas","rama":"Datos y visión","prerequisitos":["D01","D04","D03"],"objetivo":"Distinguir planta sana de planta con estrés, automáticamente","construir":"Clasificador simple sano/estresado","romper":"El modelo entrenado solo con buena luz falla con luz distinta","resolver":"Por qué hace falta variedad de datos, no solo cantidad"},
+
+{"id":"CRUCE1","numero":51,"nombre":"Competencia cruzada: Reconocimiento y optimización de plantas con IA","rama":"Competencia cruzada","prerequisitos":["B04","B05","D03","D05"],"objetivo":"Detectar estrés hídrico en un cultivo a partir de fotos","construir":"Calcular NDVI de un set de fotos y entrenar el clasificador","romper":"Fotos con nubes, sombras parciales, plantas sanas mal iluminadas","resolver":"Por qué la luz y las sombras distorsionan la lectura, y cómo corregirlo"}
+]
+;
+
+const dominados = new Set();
+
+function estadoDe(nodo){
+  if(dominados.has(nodo.id)) return 'dominado';
+  const prereqsOk = nodo.prerequisitos.every(p => dominados.has(p));
+  return prereqsOk ? 'disponible' : 'bloqueado';
+}
+
+function render(){
+  const ramas = {};
+  NODOS.forEach(n => { (ramas[n.rama] = ramas[n.rama] || []).push(n); });
+
+  const cont = document.getElementById('ramas');
+  cont.innerHTML = Object.entries(ramas).map(([rama, nodos]) => `
+    <div class="rama">
+      <div class="rama-title">${rama}</div>
+      <div class="nodos">
+        ${nodos.map(n => {
+          const est = estadoDe(n);
+          const disabled = est === 'bloqueado' ? 'onclick=""' : `onclick="openSheet('${n.id}')"`;
+          const label = est === 'dominado' ? '✓ dominado' : est === 'disponible' ? '● disponible' : '○ bloqueado';
+          return `<div class="nodo ${est}" ${disabled}>
+            <div class="num">${String(n.numero).padStart(2,'0')}</div>
+            <div class="nom">${n.nombre}</div>
+            <div class="estado">${label}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const total = NODOS.length;
+  const done = dominados.size;
+  document.getElementById('statTxt').textContent = `${done}/${total} dominados`;
+  document.getElementById('progressFill').style.width = (done/total*100) + '%';
+}
+
+function openSheet(id){
+  const n = NODOS.find(x => x.id === id);
+  const est = estadoDe(n);
+  if(est === 'bloqueado') return;
+
+  const prereqNames = n.prerequisitos.map(p => NODOS.find(x=>x.id===p)?.nombre).join(', ') || 'ninguno';
+
+  document.getElementById('sheetContent').innerHTML = `
+    <div class="sheet-eyebrow">Reto ${String(n.numero).padStart(2,'0')} · ${n.rama}</div>
+    <div class="sheet-title">${n.nombre}</div>
+    <div class="prereq-list">Prerrequisitos: ${prereqNames}</div>
+    <div class="campo"><div class="k">🎯 Objetivo</div><div class="v">${n.objetivo || '—'}</div></div>
+    ${n.construir ? `<div class="campo"><div class="k">Construir</div><div class="v">${n.construir}</div></div>` : ''}
+    ${n.romper ? `<div class="campo"><div class="k">Romper</div><div class="v">${n.romper}</div></div>` : ''}
+    ${n.resolver ? `<div class="campo"><div class="k">Resolver</div><div class="v">${n.resolver}</div></div>` : ''}
+    <button class="btn" id="domBtn" onclick="marcarDominado('${n.id}')" ${est==='dominado'?'disabled':''}>
+      ${est === 'dominado' ? '✓ Ya dominado' : 'Marcar como dominado'}
+    </button>
+  `;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function marcarDominado(id){
+  dominados.add(id);
+  closeSheet();
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
