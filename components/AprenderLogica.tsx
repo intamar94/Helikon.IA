@@ -2,150 +2,190 @@
 
 import { useMemo, useState } from "react";
 
-const totalSteps = 6;
+const TOTAL_STEPS = 8;
+
+type StepResult = "idle" | "correct" | "incorrect";
 
 export default function AprenderLogica({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
+  const [prediction, setPrediction] = useState<number | null>(null);
   const [temperature, setTemperature] = useState(35);
   const [decision, setDecision] = useState<boolean | null>(null);
-  const [loopAnswer, setLoopAnswer] = useState<number | null>(null);
-  const [memoryAnswer, setMemoryAnswer] = useState<number | null>(null);
-  const [caseAnswers, setCaseAnswers] = useState<Record<number, boolean>>({});
+  const [explanation, setExplanation] = useState<number | null>(null);
+  const [recall, setRecall] = useState<number | null>(null);
+  const [transfer, setTransfer] = useState<number | null>(null);
+  const [broken, setBroken] = useState<Record<number, boolean>>({});
   const [hint, setHint] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
-  const caseItems = useMemo(() => [
+  const cases = useMemo(() => [
     { label: "temperatura = 32", valid: true },
     { label: "temperatura = -5", valid: true },
     { label: 'temperatura = "treinta"', valid: false },
   ], []);
 
-  const next = () => {
-    setHint(false);
-    setStep((s) => Math.min(s + 1, totalSteps - 1));
-  };
-
-  const previous = () => {
-    setHint(false);
-    setStep((s) => Math.max(0, s - 1));
-  };
-
+  const predictionCorrect = prediction === 1;
   const decisionCorrect = decision === (temperature > 30);
-  const memoryCorrect = memoryAnswer === 1;
-  const loopCorrect = loopAnswer === 5;
-  const casesDone = Object.keys(caseAnswers).length === caseItems.length;
-  const casesCorrect = caseItems.every((item, i) => caseAnswers[i] === item.valid);
+  const explanationCorrect = explanation === 1;
+  const recallCorrect = recall === 1;
+  const transferCorrect = transfer === 1;
+  const brokenDone = Object.keys(broken).length === cases.length;
+  const brokenCorrect = cases.every((item, i) => broken[i] === item.valid);
+
+  function goNext() {
+    setHint(false);
+    setAttempted(false);
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+  }
+
+  function showHint() {
+    setHint(true);
+    setAttempted(true);
+  }
+
+  function choose<T>(setter: (value: T) => void, value: T) {
+    setter(value);
+    setAttempted(true);
+  }
+
+  const feedback = (result: StepResult, good: string, bad: string) => {
+    if (result === "idle") return null;
+    return <div className={`learn-feedback ${result === "correct" ? "good" : "bad"}`}>{result === "correct" ? `✓ ${good}` : bad}</div>;
+  };
 
   return (
     <div className="learn-experience">
       <div className="learn-top">
         <div>
-          <div className="sheet-eyebrow">APRENDER · {step + 1}/{totalSteps}</div>
-          <div className="learn-progress"><div style={{ width: `${((step + 1) / totalSteps) * 100}%` }} /></div>
+          <div className="sheet-eyebrow">APRENDER · {step + 1}/{TOTAL_STEPS}</div>
+          <div className="learn-progress"><div style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} /></div>
         </div>
-        <div className="learn-tag">+comprensión</div>
+        <div className="learn-tag">evidencia de comprensión</div>
       </div>
 
       {step === 0 && <>
-        <div className="learn-icon">🤖</div>
-        <div className="sheet-title">Enséñale a una máquina a decidir</div>
-        <p className="learn-text">Una estación recibe objetos. Algunos deben pasar y otros necesitan una acción diferente. Tu trabajo es darle una regla.</p>
+        <div className="learn-icon">🌱</div>
+        <div className="sheet-title">Una máquina necesita tomar decisiones</div>
+        <p className="learn-text">Imagina un invernadero. Una máquina recibe la temperatura y debe decidir cuándo encender un ventilador.</p>
         <div className="learn-scene">
-          <div className="learn-scene-label">REGLA</div>
-          <div className="learn-big">Si temperatura &gt; 30</div>
+          <div className="learn-scene-label">SITUACIÓN</div>
+          <div className="learn-big">🌡️ 35°</div>
           <div className="learn-arrow">↓</div>
-          <div className="learn-action">❄️ enfriar</div>
+          <div className="learn-action">¿encender ventilador?</div>
         </div>
-        <p className="learn-question">¿Qué acabas de construir?</p>
-        <div className="learn-choice-grid">
-          <button className="learn-choice" onClick={next}>Una condición: si ocurre algo, toma una decisión</button>
-          <button className="learn-choice" onClick={() => setHint(true)}>Una repetición automática</button>
+        <p className="learn-question">Antes de aprender la regla: ¿qué debería hacer?</p>
+        <div className="learn-choice-grid two">
+          <button className={`learn-choice ${prediction === 1 ? "selected" : ""}`} onClick={() => choose(setPrediction, 1)}>Sí, porque está caliente</button>
+          <button className={`learn-choice ${prediction === 0 ? "selected" : ""}`} onClick={() => choose(setPrediction, 0)}>No, porque siempre debe estar apagado</button>
         </div>
-        {hint && <div className="learn-feedback">Casi. La repetición aparece cuando queremos hacer una acción varias veces. Aquí la máquina decide según una condición.</div>}
+        {prediction !== null && feedback(predictionCorrect ? "correct" : "incorrect", "Bien. Acabas de hacer una predicción antes de recibir la explicación.", "La idea es decidir usando un dato de la situación: la temperatura.")}
+        <button className="btn" disabled={!predictionCorrect} onClick={goNext}>Descubrir la regla →</button>
       </>}
 
       {step === 1 && <>
-        <div className="learn-icon">🎚️</div>
-        <div className="sheet-title">Ahora haz que la regla cambie</div>
-        <p className="learn-text">Mueve la temperatura. La máquina debe enfriar solamente cuando sea mayor que 30.</p>
+        <div className="learn-icon">🔎</div>
+        <div className="sheet-title">Descubre qué hace cambiar la decisión</div>
+        <p className="learn-text">La regla es: si la temperatura es mayor que 30°, enfría. No la memorices todavía. Juega con ella.</p>
         <div className="learn-slider-card">
           <div className="learn-temperature">{temperature}°</div>
           <input type="range" min="15" max="45" value={temperature} onChange={(e) => { setTemperature(Number(e.target.value)); setDecision(null); }} />
           <div className="learn-range"><span>15°</span><span>30°</span><span>45°</span></div>
         </div>
-        <div className="learn-question">Con {temperature}°, ¿la máquina debe enfriar?</div>
+        <div className="learn-question">Con {temperature}°, ¿debe enfriar?</div>
         <div className="learn-choice-grid two">
-          <button className={`learn-choice ${decision === true ? "selected" : ""}`} onClick={() => setDecision(true)}>Sí</button>
-          <button className={`learn-choice ${decision === false ? "selected" : ""}`} onClick={() => setDecision(false)}>No</button>
+          <button className={`learn-choice ${decision === true ? "selected" : ""}`} onClick={() => choose(setDecision, true)}>Sí</button>
+          <button className={`learn-choice ${decision === false ? "selected" : ""}`} onClick={() => choose(setDecision, false)}>No</button>
         </div>
-        {decision !== null && <div className={`learn-feedback ${decisionCorrect ? "good" : "bad"}`}>{decisionCorrect ? "✓ Correcto. La condición convierte un dato en una decisión." : "No todavía. Compara el valor con 30: ¿es realmente mayor?"}</div>}
-        <button className="btn" disabled={!decisionCorrect} onClick={next}>Entendí la condición →</button>
+        {decision !== null && feedback(decisionCorrect ? "correct" : "incorrect", "Correcto. Observaste la relación entre el dato y la decisión.", "Compara el número con 30. La palabra clave es «mayor».")}
+        <button className="btn" disabled={!decisionCorrect} onClick={goNext}>Seguir explorando →</button>
       </>}
 
       {step === 2 && <>
-        <div className="learn-icon">🔁</div>
-        <div className="sheet-title">Ahora la máquina repite</div>
-        <p className="learn-text">Hay 5 objetos en la bandeja. Queremos revisar cada uno. No queremos escribir la misma instrucción cinco veces.</p>
-        <div className="learn-loop">
-          <div className="learn-code-line"><span>for</span> cada objeto <span>en</span> bandeja:</div>
-          <div className="learn-code-line indent">→ revisar(objeto)</div>
-        </div>
-        <div className="learn-question">¿Cuántas veces se ejecuta <span className="mono">revisar(objeto)</span>?</div>
+        <div className="learn-icon">💡</div>
+        <div className="sheet-title">Ponlo en tus propias palabras</div>
+        <p className="learn-text">Ya viste el comportamiento. Ahora reconstruye la idea sin copiar una definición.</p>
+        <div className="learn-scene"><div className="learn-scene-label">¿QUÉ HACE UNA CONDICIÓN?</div><div className="learn-big">dato → decisión</div></div>
         <div className="learn-choice-grid">
-          {[1, 4, 5].map((n) => <button key={n} className={`learn-choice ${loopAnswer === n ? "selected" : ""}`} onClick={() => setLoopAnswer(n)}>{n} veces</button>)}
+          <button className={`learn-choice ${explanation === 1 ? "selected" : ""}`} onClick={() => choose(setExplanation, 1)}>Permite elegir qué hacer según si se cumple una regla</button>
+          <button className={`learn-choice ${explanation === 0 ? "selected" : ""}`} onClick={() => choose(setExplanation, 0)}>Hace que una acción se repita indefinidamente</button>
         </div>
-        {loopAnswer !== null && <div className={`learn-feedback ${loopCorrect ? "good" : "bad"}`}>{loopCorrect ? "✓ Exacto. Un loop repite una acción para cada elemento." : "Mira cuántos objetos hay en la bandeja. El loop recorre todos."}</div>}
-        <button className="btn" disabled={!loopCorrect} onClick={next}>Seguir →</button>
+        {explanation !== null && feedback(explanationCorrect ? "correct" : "incorrect", "Exacto. La condición convierte una situación en una decisión.", "Eso describe una repetición. Aquí estamos eligiendo entre caminos.")}
+        <button className="btn" disabled={!explanationCorrect} onClick={goNext}>Comprobar si puedo recordarlo →</button>
       </>}
 
       {step === 3 && <>
         <div className="learn-icon">🧠</div>
-        <div className="sheet-title">Sin mirar: recupera la idea</div>
-        <p className="learn-text">No buscamos memoria literal. Queremos comprobar que puedes reconstruir el concepto.</p>
+        <div className="sheet-title">Ahora sin mirar</div>
+        <p className="learn-text">La explicación desaparece. Recupera la idea desde tu memoria.</p>
         <div className="learn-memory">Una <b>_____</b> decide entre caminos. Un <b>_____</b> repite una acción.</div>
         <div className="learn-choice-grid">
-          <button className={`learn-choice ${memoryAnswer === 0 ? "selected" : ""}`} onClick={() => setMemoryAnswer(0)}>variable / función</button>
-          <button className={`learn-choice ${memoryAnswer === 1 ? "selected" : ""}`} onClick={() => setMemoryAnswer(1)}>condición / loop</button>
-          <button className={`learn-choice ${memoryAnswer === 2 ? "selected" : ""}`} onClick={() => setMemoryAnswer(2)}>loop / condición</button>
+          <button className={`learn-choice ${recall === 1 ? "selected" : ""}`} onClick={() => choose(setRecall, 1)}>condición / loop</button>
+          <button className={`learn-choice ${recall === 0 ? "selected" : ""}`} onClick={() => choose(setRecall, 0)}>loop / condición</button>
         </div>
-        {memoryAnswer !== null && <div className={`learn-feedback ${memoryCorrect ? "good" : "bad"}`}>{memoryCorrect ? "✓ Lo recuperaste sin volver a leer la explicación." : "Pista: una decide; el otro repite."}</div>}
-        <button className="btn" disabled={!memoryCorrect} onClick={next}>Lo tengo →</button>
+        {recall !== null && feedback(recallCorrect ? "correct" : "incorrect", "Lo recuperaste sin volver a leer la explicación.", "Recuerda: una condición decide; un loop repite.")}
+        <button className="btn" disabled={!recallCorrect} onClick={goNext}>Aplicarlo en otro contexto →</button>
       </>}
 
       {step === 4 && <>
-        <div className="learn-icon">💥</div>
-        <div className="sheet-title">Ahora rompe tu propia regla</div>
-        <p className="learn-text">Una buena solución también sabe reconocer entradas que no puede tratar como números.</p>
-        <div className="learn-cases">
-          {caseItems.map((item, i) => <div className="learn-case" key={item.label}>
-            <span className="mono">{item.label}</span>
-            <div className="learn-case-actions">
-              <button className={caseAnswers[i] === true ? "selected" : ""} onClick={() => setCaseAnswers((a) => ({ ...a, [i]: true }))}>válido</button>
-              <button className={caseAnswers[i] === false ? "selected" : ""} onClick={() => setCaseAnswers((a) => ({ ...a, [i]: false }))}>no válido</button>
-            </div>
-          </div>)}
+        <div className="learn-icon">🌾</div>
+        <div className="sheet-title">El concepto sale de programación</div>
+        <p className="learn-text">Una planta necesita agua cuando la humedad del suelo baja de 25%. ¿Qué idea de las que acabas de aprender aparece aquí?</p>
+        <div className="learn-scene"><div className="learn-scene-label">NUEVO CONTEXTO</div><div className="learn-big">humedad &lt; 25% → regar</div></div>
+        <div className="learn-choice-grid">
+          <button className={`learn-choice ${transfer === 1 ? "selected" : ""}`} onClick={() => choose(setTransfer, 1)}>Una condición: el dato determina la acción</button>
+          <button className={`learn-choice ${transfer === 0 ? "selected" : ""}`} onClick={() => choose(setTransfer, 0)}>Un loop: la acción se repite para siempre</button>
         </div>
-        {casesDone && <div className={`learn-feedback ${casesCorrect ? "good" : "bad"}`}>{casesCorrect ? "✓ Bien. Validar la entrada evita operar con un tipo que el programa no espera." : "Revisa los tipos: un texto no es un número, aunque describa un número."}</div>}
-        <button className="btn" disabled={!casesCorrect} onClick={next}>Prepararme para practicar →</button>
+        {transfer !== null && feedback(transferCorrect ? "correct" : "incorrect", "Transferiste el concepto a una situación distinta. Esa es una señal fuerte de comprensión.", "Busca la estructura: un dato se compara con una regla para decidir una acción.")}
+        <button className="btn" disabled={!transferCorrect} onClick={goNext}>Ponerlo a prueba →</button>
       </>}
 
       {step === 5 && <>
+        <div className="learn-icon">💥</div>
+        <div className="sheet-title">Rompe la regla</div>
+        <p className="learn-text">Una solución real también debe saber qué entradas puede aceptar. Decide cuáles son datos válidos para una temperatura.</p>
+        <div className="learn-cases">
+          {cases.map((item, i) => <div className="learn-case" key={item.label}>
+            <span className="mono">{item.label}</span>
+            <div className="learn-case-actions">
+              <button className={broken[i] === true ? "selected" : ""} onClick={() => choose((v) => setBroken((a) => ({ ...a, [i]: v })), true)}>válido</button>
+              <button className={broken[i] === false ? "selected" : ""} onClick={() => choose((v) => setBroken((a) => ({ ...a, [i]: v })), false)}>no válido</button>
+            </div>
+          </div>)}
+        </div>
+        {brokenDone && feedback(brokenCorrect ? "correct" : "incorrect", "Bien. También sabes detectar cuándo el dato no puede tratarse como esperas.", "Un texto no es automáticamente un número. Los valores numéricos, incluso negativos, sí pueden representar temperatura.")}
+        <button className="btn" disabled={!brokenCorrect} onClick={goNext}>Reconstruir lo esencial →</button>
+      </>}
+
+      {step === 6 && <>
         <div className="learn-icon">🎯</div>
-        <div className="sheet-title">Ya tienes las piezas</div>
-        <p className="learn-text">Antes de practicar, quédate con estas tres ideas. La práctica será la primera vez que tendrás que construirlas tú.</p>
+        <div className="sheet-title">Tres ideas que debes poder recuperar</div>
+        <p className="learn-text">No necesitas recordar una definición de libro. Debes poder usar estas tres piezas cuando aparezca un problema.</p>
         <div className="learn-summary">
           <div><span>01</span><b>Condición</b><p>decide según un dato</p></div>
           <div><span>02</span><b>Loop</b><p>repite una acción</p></div>
-          <div><span>03</span><b>Validación</b><p>comprueba la entrada antes de operar</p></div>
+          <div><span>03</span><b>Validación</b><p>comprueba la entrada</p></div>
         </div>
-        <div className="learn-challenge">⚡ La explicación termina aquí. Ahora Helikon te pedirá que lo hagas.</div>
+        <div className="learn-question">¿Cuál de estas frases demuestra mejor que entendiste el concepto?</div>
+        <div className="learn-choice-grid">
+          <button className="learn-choice" onClick={goNext}>Puedo reconocer y usar una condición aunque cambie el contexto.</button>
+          <button className="learn-choice" onClick={showHint}>He leído la definición y me resulta familiar.</button>
+        </div>
+        {hint && <div className="learn-feedback">Helikon busca transferencia, no solamente familiaridad. Si puedes usar la idea en un problema nuevo, la comprensión es más sólida.</div>}
+      </>}
+
+      {step === 7 && <>
+        <div className="learn-icon">⚡</div>
+        <div className="sheet-title">Ahora deja de aprender y empieza a demostrar</div>
+        <p className="learn-text">Ya exploraste, predijiste, explicaste, recordaste, transferiste y rompiste la idea. La siguiente fase ya no te enseñará la solución: tendrás que construirla.</p>
+        <div className="learn-challenge">🛠️ <b>PRÁCTICA</b><br />Resolverás problemas donde Helikon comprobará si puedes utilizar las ideas por tu cuenta.</div>
         <button className="btn" onClick={onComplete}>Empezar práctica →</button>
       </>}
 
       <div className="learn-nav">
-        <button className="learn-back" disabled={step === 0} onClick={previous}>← Atrás</button>
+        <button className="learn-back" disabled={step === 0} onClick={() => { setHint(false); setAttempted(false); setStep((s) => Math.max(0, s - 1)); }}>← Atrás</button>
         <button className="learn-hint" onClick={() => setHint((h) => !h)}>💡 Pista</button>
       </div>
-      {hint && step > 0 && <div className="learn-global-hint">Piensa en qué dato cambia la decisión. Después pregunta: ¿necesito hacerlo una vez o para cada elemento?</div>}
+      {hint && !attempted && <div className="learn-global-hint">No busques memorizar la frase exacta. Pregúntate qué dato cambia la decisión y qué ocurre cuando la situación cambia.</div>}
     </div>
   );
 }
