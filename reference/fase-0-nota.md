@@ -1,0 +1,1 @@
+La Fase 0 introduce el reto con una misión visual y narrativa breve. No enseña la solución; prepara al estudiante para descubrirla en APRENDER.
