@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import AprenderLogicaCore from "@/components/AprenderLogicaCore";
 import IntroduccionReto from "@/components/IntroduccionReto";
 
