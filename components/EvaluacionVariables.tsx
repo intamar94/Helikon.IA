@@ -3,9 +3,7 @@
 import { useMemo, useState } from "react";
 
 type Props = { onFinish: (correctas: number, total: number) => void };
-
 type Item = { id: string; title: string; prompt: string; options: string[]; correct: number; skill: string };
-
 const ITEMS: Item[] = [
   { id: "order", title: "01 · Orden", prompt: "Para precio = 600, ¿qué condición debe evaluarse antes?", options: ["precio > 100", "precio > 500", "precio == 600"], correct: 1, skill: "orden" },
   { id: "shadow", title: "02 · Detectar", prompt: "¿Qué problema aparece si `if precio > 100` está antes de `else if precio > 500`?", options: ["La segunda regla queda inaccesible para 600", "El programa se vuelve más rápido", "No cambia nada"], correct: 0, skill: "detectar" },
@@ -24,7 +22,7 @@ export default function EvaluacionVariables({ onFinish }: Props) {
   function finish() {
     if (!complete || submitted) return;
     setSubmitted(true);
-    try { localStorage.setItem("helikon:last-failed-skills-V", JSON.stringify(failed)); } catch {}
+    try { localStorage.setItem("helikon:last-failed-skills", JSON.stringify(failed)); } catch {}
     onFinish(score, ITEMS.length);
   }
 
