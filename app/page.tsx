@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useUsuarioId } from "@/lib/useUsuarioId";
 import AprenderLogica from "@/components/AprenderLogica";
+import AprenderVariables from "@/components/AprenderVariables";
 import EvaluacionLogica from "@/components/EvaluacionLogica";
+import EvaluacionVariables from "@/components/EvaluacionVariables";
 import type { Estado, EvaluacionNodo, Nodo, Pregunta } from "@/types/nodo";
 
 const MAX_INTENTOS = 3;
@@ -89,6 +91,7 @@ export default function Home() {
 
   async function comenzar() {
     if (!nodoSeleccionado) return;
+    if (!dominados.has(nodoSeleccionado.id) && (intentos[nodoSeleccionado.id] ?? 0) >= MAX_INTENTOS) { setFase("resultado"); return; }
     await guardarEstado(nodoSeleccionado.id, "en_aprendizaje", { aprendizajeCompletado: true, fecha: new Date().toISOString() });
     setFase("practicando");
   }
@@ -100,16 +103,14 @@ export default function Home() {
   }
 
   async function finalizarEvaluacion(correctas: number, totalPreguntas: number) {
-    if (!nodoSeleccionado || !usuarioId) return;
+    if (!nodoSeleccionado || !usuarioId || (intentos[nodoSeleccionado.id] ?? 0) >= MAX_INTENTOS) return;
     const numeroIntento = (intentos[nodoSeleccionado.id] ?? 0) + 1;
     const resultado = Math.round((correctas / totalPreguntas) * 100);
     let skills: string[] = habilidadesFallidas[nodoSeleccionado.id] ?? [];
-    if (nodoSeleccionado.id === "L") {
-      try { const raw = localStorage.getItem("helikon:last-failed-skills"); skills = raw ? JSON.parse(raw) : skills; } catch {}
-    }
+    try { const raw = localStorage.getItem("helikon:last-failed-skills"); if (nodoSeleccionado.id === "L" || nodoSeleccionado.id === "V") skills = raw ? JSON.parse(raw) : skills; } catch {}
     setIntentos((prev) => ({ ...prev, [nodoSeleccionado.id]: numeroIntento }));
     setHabilidadesFallidas((prev) => ({ ...prev, [nodoSeleccionado.id]: skills }));
-    await supabase!.from("helikon_intentos").insert({ usuario_id: usuarioId, nodo_id: nodoSeleccionado.id, tipo: "evaluacion", numero: numeroIntento, resultado, completado: correctas === totalPreguntas, respuestas: { correctas, total: totalPreguntas, tipo: nodoSeleccionado.id === "L" ? "demostracion" : "cuestionario", habilidadesFallidas: skills } });
+    await supabase!.from("helikon_intentos").insert({ usuario_id: usuarioId, nodo_id: nodoSeleccionado.id, tipo: "evaluacion", numero: numeroIntento, resultado, completado: correctas === totalPreguntas, respuestas: { correctas, total: totalPreguntas, tipo: nodoSeleccionado.id === "L" || nodoSeleccionado.id === "V" ? "demostracion" : "cuestionario", habilidadesFallidas: skills } });
     if (correctas === totalPreguntas) {
       await guardarEstado(nodoSeleccionado.id, "dominado", { intentos: numeroIntento, resultado: 100, demostrado: ["aprendizaje", "practica", "evaluacion", "transferencia"], evidencia: "demostracion", habilidadesFallidas: [] });
       setFase("resultado"); return;
@@ -142,13 +143,16 @@ function crearEvaluacion(nodo: Nodo, nodos: Nodo[]): EvaluacionNodo {
 function Reto({ nodo, nodos, fase, evaluacion, intento, onComenzar, onPractica, onEvaluar, onReforzar, dominado, habilidadesFallidas }: { nodo: Nodo; nodos: Nodo[]; fase: Fase; evaluacion: EvaluacionNodo; intento: number; onComenzar: () => void; onPractica: (correctas: number, total: number) => void; onEvaluar: (correctas: number, total: number) => void; onReforzar: () => void; dominado: boolean; habilidadesFallidas: string[] }) {
   const prereqNames = nodo.prerequisitos.map((p) => nodos.find((x) => x.id === p)?.nombre).filter(Boolean).join(", ") || "ninguno";
   if (fase === "aprender" && nodo.id === "L") return <AprenderLogica onComplete={onComenzar} />;
+  if (fase === "aprender" && nodo.id === "V") return <AprenderVariables onComplete={onComenzar} />;
   if (fase === "practicando") return <Cuestionario titulo="PRÁCTICA GUIADA" preguntas={evaluacion.practica} boton="Pasar a evaluación →" onFinish={onPractica} />;
   if (fase === "evaluando" && nodo.id === "L") return <EvaluacionLogica onFinish={onEvaluar} />;
+  if (fase === "evaluando" && nodo.id === "V") return <EvaluacionVariables onFinish={onEvaluar} />;
   if (fase === "evaluando") return <Cuestionario titulo={`EVALUACIÓN · INTENTO ${Math.min(intento + 1, MAX_INTENTOS)}/${MAX_INTENTOS}`} preguntas={evaluacion.preguntas} boton="Evaluar resultado" onFinish={onEvaluar} />;
   if (fase === "resultado") {
     if (dominado) return <div><div className="success-mark">✓</div><div className="sheet-eyebrow ok">COMPETENCIA CONFIRMADA</div><div className="sheet-title">{nodo.nombre}</div><p className="result-text">Has demostrado la competencia mediante aprendizaje, práctica, evaluación y transferencia. El siguiente nodo ya puede desbloquearse.</p><button className="btn" onClick={onReforzar}>Revisar lo aprendido</button></div>;
     const skillsText = habilidadesFallidas.length ? `La evaluación detectó que debes reforzar: ${habilidadesFallidas.join(", ")}.` : "Helikon detectó que todavía falta evidencia suficiente de dominio.";
-    return <div><div className="failure-mark">!</div><div className="sheet-eyebrow danger">NECESITA REFUERZO</div><div className="sheet-title">Todavía no hay dominio suficiente</div><p className="result-text">{skillsText} Helikon te devuelve al contenido para trabajar esa habilidad con una situación diferente antes de permitir otro intento.</p><div className="evidence-note">Intento {Math.min(intento, MAX_INTENTOS)}/{MAX_INTENTOS} · el siguiente avance depende de demostrar la competencia.</div><button className="btn" onClick={onReforzar}>Volver a aprender</button></div>;
+    const agotado = intento >= MAX_INTENTOS;
+    return <div><div className="failure-mark">!</div><div className="sheet-eyebrow danger">{agotado ? "LÍMITE DE INTENTOS" : "NECESITA REFUERZO"}</div><div className="sheet-title">{agotado ? "La competencia sigue sin estar demostrada" : "Todavía no hay dominio suficiente"}</div><p className="result-text">{agotado ? `Has utilizado los ${MAX_INTENTOS} intentos disponibles. La ruta no se desbloquea hasta que exista evidencia suficiente de dominio.` : `${skillsText} Helikon te devuelve al contenido para trabajar esa habilidad con una situación diferente antes de permitir otro intento.`}</p><div className="evidence-note">Intento {Math.min(intento, MAX_INTENTOS)}/{MAX_INTENTOS} · el siguiente avance depende de demostrar la competencia.</div>{!agotado && <button className="btn" onClick={onReforzar}>Volver a aprender</button>}</div>;
   }
   return <><div className="sheet-eyebrow">Reto {String(nodo.numero).padStart(2, "0")} · {nodo.rama}</div><div className="sheet-title">{nodo.nombre}</div><div className="prereq-list">Prerrequisitos: {prereqNames}</div><div className="phase-track"><span className="active">1 Aprender</span><span>2 Practicar</span><span>3 Evaluar</span></div><div className="campo"><div className="k">🎯 Objetivo</div><div className="v">{nodo.objetivo || "—"}</div></div><div className="learn-box"><div className="k">QUÉ VAS A HACER</div><div className="v">{nodo.construir || "Aplicar el concepto en una situación práctica."}</div></div><div className="campo"><div className="k">💥 QUÉ PUEDE FALLAR</div><div className="v">{nodo.romper || "Un caso límite pondrá a prueba tu comprensión."}</div></div><div className="campo"><div className="k">🔎 QUÉ DEBES ENTENDER</div><div className="v">{nodo.resolver || "Explicar por qué la solución funciona."}</div></div><div className="evidence-note">Para desbloquear el siguiente reto tendrás que completar la práctica y aprobar la evaluación. No existe un botón para marcarlo manualmente.</div><button className="btn" onClick={onComenzar}>{dominado ? "Rehacer práctica" : "Empezar práctica →"}</button></>;
 }
