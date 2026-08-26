@@ -36,7 +36,7 @@ export default function AprenderLogica({ onComplete }: { onComplete: () => void 
   }
 
   if (fase === "refuerzo") {
-    return <ReforzarLogica skills={skills} onComplete={() => setFase("aprendizaje")} />;
+    return <ReforzarLogica skills={skills} onComplete={onComplete} />;
   }
 
   if (fase === "aprendizaje") {
