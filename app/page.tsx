@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useUsuarioId } from "@/lib/useUsuarioId";
 import AprenderLogica from "@/components/AprenderLogica";
+import EvaluacionLogica from "@/components/EvaluacionLogica";
 import type { Estado, EvaluacionNodo, Nodo, Pregunta } from "@/types/nodo";
 
 const MAX_INTENTOS = 3;
@@ -127,10 +128,10 @@ export default function Home() {
     await supabase!.from("helikon_intentos").insert({
       usuario_id: usuarioId, nodo_id: nodoSeleccionado.id, tipo: "evaluacion", numero: numeroIntento,
       resultado: Math.round((correctas / totalPreguntas) * 100), completado: correctas === totalPreguntas,
-      respuestas: { correctas, total: totalPreguntas },
+      respuestas: { correctas, total: totalPreguntas, tipo: nodoSeleccionado.id === "L" ? "demostracion" : "cuestionario" },
     });
     if (correctas === totalPreguntas) {
-      await guardarEstado(nodoSeleccionado.id, "dominado", { intentos: numeroIntento, resultado: 100, demostrado: ["aprendizaje", "practica", "evaluacion"] });
+      await guardarEstado(nodoSeleccionado.id, "dominado", { intentos: numeroIntento, resultado: 100, demostrado: ["aprendizaje", "practica", "evaluacion"], evidencia: "demostracion" });
       setFase("resultado"); return;
     }
     await guardarEstado(nodoSeleccionado.id, "en_aprendizaje", { intentos: numeroIntento, ultimoResultado: Math.round((correctas / totalPreguntas) * 100) });
@@ -181,6 +182,7 @@ function Reto({ nodo, nodos, fase, evaluacion, intento, onComenzar, onPractica, 
 
   if (fase === "aprender" && nodo.id === "L") return <AprenderLogica onComplete={onComenzar} />;
   if (fase === "practicando") return <Cuestionario titulo="PRÁCTICA GUIADA" preguntas={evaluacion.practica} boton="Pasar a evaluación →" onFinish={onPractica} />;
+  if (fase === "evaluando" && nodo.id === "L") return <EvaluacionLogica onFinish={onEvaluar} />;
   if (fase === "evaluando") return <Cuestionario titulo={`EVALUACIÓN · INTENTO ${Math.min(intento + 1, MAX_INTENTOS)}/${MAX_INTENTOS}`} preguntas={evaluacion.preguntas} boton="Evaluar resultado" onFinish={onEvaluar} />;
   if (fase === "resultado") {
     if (dominado) return <div><div className="success-mark">✓</div><div className="sheet-eyebrow ok">COMPETENCIA CONFIRMADA</div><div className="sheet-title">{nodo.nombre}</div><p className="result-text">Has demostrado la competencia mediante aprendizaje, práctica y evaluación. El siguiente nodo ya puede desbloquearse.</p><button className="btn" onClick={onReforzar}>Revisar lo aprendido</button></div>;
