@@ -1,0 +1,1 @@
+Implementación pendiente: el ciclo de dominio debe conectar resultados de evaluación con refuerzo específico, nuevo intento variante, transferencia y dominio. Esta especificación acompaña al Reto 01 y sirve como contrato para la siguiente iteración del motor pedagógico.
