@@ -7,6 +7,12 @@ type Estado = "pendiente" | "en_construccion" | "validado" | "requiere_correccio
 type Etapa = { nombre: string; estado: Estado };
 type Reto = { numero: number; nombre: string; etapas: Etapa[] };
 
+const NOMBRES = ["Diseño", "Contenido", "Aprender", "Practicar", "Evaluar", "Adaptación", "Integración", "Build", "Validación"];
+
+function etapas(estado: Estado, hasta = estado === "validado" ? 9 : 0): Etapa[] {
+  return NOMBRES.map((nombre, i) => ({ nombre, estado: estado === "validado" ? "validado" : i < hasta ? "validado" : i === hasta ? "en_construccion" : "pendiente" }));
+}
+
 const RETOS: Reto[] = [
   { numero: 1, nombre: "Lógica", etapas: etapas("validado") },
   { numero: 2, nombre: "Variables y control de flujo", etapas: etapas("validado") },
@@ -16,12 +22,6 @@ const RETOS: Reto[] = [
   { numero: 6, nombre: "Manejo de errores", etapas: etapas("pendiente") },
   { numero: 7, nombre: "Algoritmos", etapas: etapas("pendiente") },
 ];
-
-const NOMBRES = ["Diseño", "Contenido", "Aprender", "Practicar", "Evaluar", "Adaptación", "Integración", "Build", "Validación"];
-
-function etapas(estado: Estado, hasta = estado === "validado" ? 9 : 0): Etapa[] {
-  return NOMBRES.map((nombre, i) => ({ nombre, estado: estado === "validado" ? "validado" : i < hasta ? "validado" : i === hasta ? "en_construccion" : "pendiente" }));
-}
 
 function pct(reto: Reto) { return Math.round((reto.etapas.filter((e) => e.estado === "validado").length / reto.etapas.length) * 100); }
 function icon(estado: Estado) { return estado === "validado" ? "✓" : estado === "en_construccion" ? "◐" : estado === "requiere_correccion" ? "⚠" : "○"; }
