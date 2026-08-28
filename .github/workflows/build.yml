@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: ["feat/reto01-ciclo-demostracion"]
+    branches: ["main"]
   pull_request:
-    branches: ["feat/reto01-ciclo-demostracion"]
+    branches: ["main"]
 
 jobs:
   build:
