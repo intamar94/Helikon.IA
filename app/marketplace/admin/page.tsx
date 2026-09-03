@@ -12,6 +12,7 @@ export default async function PaginaAdmin() {
     operadores,
     certificaciones,
     drones,
+    anuncios,
     solicitudes,
     listaEspera,
   ] = await Promise.all([
@@ -21,6 +22,7 @@ export default async function PaginaAdmin() {
     repo.listarOperadores(),
     repo.listarCertificaciones(),
     repo.listarDrones(),
+    repo.listarAnuncios(),
     repo.listarSolicitudes(),
     repo.listarListaEspera(),
   ]);
@@ -33,6 +35,7 @@ export default async function PaginaAdmin() {
       operadores={operadores}
       certificaciones={certificaciones}
       drones={drones}
+      anuncios={anuncios}
       solicitudes={solicitudes}
       listaEspera={listaEspera}
       fuente={repo.fuente}

@@ -23,6 +23,17 @@ export const SERVICIOS: Servicio[] = [
   "dispersion_solidos",
 ];
 
+/**
+ * Modalidad de la publicación. Define quién opera el dron y, con eso, a quién
+ * le exige la certificación el motor de cumplimiento.
+ *  - con_piloto: va el operador y aplica. La certificación es del operador.
+ *  - alquiler:   el propietario presta el equipo y vuela el cliente. La
+ *                certificación se le exige al PRODUCTOR.
+ */
+export type Modalidad = "con_piloto" | "alquiler";
+
+export const MODALIDADES: Modalidad[] = ["con_piloto", "alquiler"];
+
 export type EstadoSolicitud =
   | "pendiente"
   | "asignada"
@@ -77,9 +88,14 @@ export interface Operador {
   ubicacion_lng: number;
 }
 
-export interface CertificacionOperador {
+/** Un titular de certificaciones puede ser cualquiera de los dos lados. */
+export type TitularCertificacion = TipoUsuario;
+
+export interface Certificacion {
   id: string;
-  operador_id: string;
+  /** 'operador' o 'productor': quién es el dueño de la licencia. */
+  titular_tipo: TitularCertificacion;
+  titular_id: string;
   pais_id: string;
   tipo_certificacion: string;
   numero: string;
@@ -90,15 +106,31 @@ export interface CertificacionOperador {
   documento_revisado: boolean;
 }
 
+/** El equipo físico. Lo comercial vive en `Anuncio`. */
 export interface Dron {
   id: string;
   operador_id: string;
   modelo: string;
   capacidad_carga_litros: number;
-  servicios_ofrecidos: Servicio[];
   hectareas_por_hora: number;
-  /** Tarifa de referencia usada para el precio estimado del paso (f). */
-  precio_base_hectarea_usd: number;
+}
+
+/**
+ * La publicación: un mismo dron puede estar anunciado dos veces, con piloto y
+ * en alquiler, a precios distintos. Es la unidad que se reserva.
+ */
+export interface Anuncio {
+  id: string;
+  dron_id: string;
+  modalidad: Modalidad;
+  servicios_ofrecidos: Servicio[];
+  /** Tarifa del servicio con piloto. Null en anuncios de alquiler. */
+  precio_hectarea_usd: number | null;
+  /** Tarifa diaria del alquiler. Null en anuncios con piloto. */
+  precio_dia_usd: number | null;
+  /** Jornada operativa asumida para convertir horas de vuelo en días. */
+  horas_por_jornada: number;
+  activo: boolean;
 }
 
 export interface Productor {
@@ -118,6 +150,7 @@ export interface Solicitud {
   region_id: string;
   cultivo: string;
   servicio: Servicio;
+  modalidad: Modalidad;
   hectareas: number;
   /** ISO date (YYYY-MM-DD). */
   fecha_deseada: string;
@@ -125,6 +158,11 @@ export interface Solicitud {
   estado: EstadoSolicitud;
   motivo_rechazo: string | null;
   regla_aplicada_id: string | null;
+  /** Se completan al reservar una opción (estado pasa a 'asignada'). */
+  anuncio_asignado_id: string | null;
+  operador_asignado_id: string | null;
+  precio_acordado_usd: number | null;
+  fecha_asignacion: string | null;
   creada_en: string;
 }
 
@@ -144,6 +182,7 @@ export interface EntradaSolicitud {
   region_id: string;
   cultivo: string;
   servicio: Servicio;
+  modalidad: Modalidad;
   hectareas: number;
   fecha_deseada: string;
   producto_a_aplicar: string;
@@ -155,7 +194,8 @@ export interface DatasetMatching {
   regiones: Region[];
   reglas: ReglaCumplimiento[];
   operadores: Operador[];
-  certificaciones: CertificacionOperador[];
+  certificaciones: Certificacion[];
   drones: Dron[];
+  anuncios: Anuncio[];
   productores: Productor[];
 }

@@ -6,17 +6,20 @@ import { EstadoBadge } from "./EstadoBadge";
 import { ResultadoMatching } from "./ResultadoMatching";
 import {
   CULTIVOS_SUGERIDOS,
+  DESCRIPCION_MODALIDAD,
+  ETIQUETA_MODALIDAD,
   ETIQUETA_SERVICIO,
 } from "@/lib/marketplace/labels";
 import type { ResultadoMatching as Resultado } from "@/lib/marketplace/matching";
 import type {
+  Modalidad,
   Pais,
   Productor,
   Region,
   Servicio,
   Solicitud,
 } from "@/lib/marketplace/types";
-import { SERVICIOS } from "@/lib/marketplace/types";
+import { MODALIDADES, SERVICIOS } from "@/lib/marketplace/types";
 
 interface Props {
   paises: Pais[];
@@ -45,6 +48,7 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
       productores[0]?.id ??
       "",
   );
+  const [modalidad, setModalidad] = useState<Modalidad>("con_piloto");
   const [cultivo, setCultivo] = useState("banano");
   const [servicio, setServicio] = useState<Servicio>("fumigacion");
   const [hectareas, setHectareas] = useState("120");
@@ -56,6 +60,9 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
   const [listaEsperaAbierta, setListaEsperaAbierta] = useState(false);
+  const [reservando, setReservando] = useState<string | null>(null);
+  const [reservado, setReservado] = useState<string | null>(null);
+  const [avisoReserva, setAvisoReserva] = useState("");
 
   const productor = productores.find((p) => p.id === productorId);
   const pais = paises.find((p) => p.id === productor?.pais_id);
@@ -66,13 +73,14 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
     [regiones, pais?.id],
   );
 
-  async function enviar(evento: React.FormEvent) {
-    evento.preventDefault();
+  async function buscar(modo: Modalidad = modalidad) {
     if (!productor) return;
     setEnviando(true);
     setError("");
     setResultado(null);
     setListaEsperaAbierta(false);
+    setReservado(null);
+    setAvisoReserva("");
 
     try {
       const respuesta = await fetch("/api/marketplace/solicitudes", {
@@ -84,6 +92,7 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
           region_id: productor.region_id,
           cultivo,
           servicio,
+          modalidad: modo,
           hectareas: Number(hectareas),
           fecha_deseada: fechaDeseada,
           producto_a_aplicar: producto,
@@ -97,6 +106,44 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
       setError(e instanceof Error ? e.message : "Error inesperado.");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  function enviar(evento: React.FormEvent) {
+    evento.preventDefault();
+    void buscar();
+  }
+
+  function cambiarModalidad(modo: Modalidad) {
+    setModalidad(modo);
+    void buscar(modo);
+  }
+
+  async function reservar(anuncioId: string) {
+    if (!solicitud) return;
+    setReservando(anuncioId);
+    setError("");
+    try {
+      const respuesta = await fetch(
+        `/api/marketplace/solicitudes/${solicitud.id}/reservar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ anuncio_id: anuncioId }),
+        },
+      );
+      const datos = await respuesta.json();
+      if (!respuesta.ok) throw new Error(datos.error ?? "No se pudo reservar.");
+      setReservado(anuncioId);
+      setSolicitud(datos.solicitud as Solicitud);
+      setAvisoReserva(
+        `Reservaste ${datos.opcion.operador.nombre} · ${datos.opcion.dron.modelo}. ` +
+          `La solicitud quedó asignada; el operador la ve en su bandeja.`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado.");
+    } finally {
+      setReservando(null);
     }
   }
 
@@ -145,6 +192,39 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
               <EstadoBadge estado={region.estado} />
             </div>
           )}
+
+          <fieldset>
+            <legend className="mkt-label">Modalidad</legend>
+            <div className="grid gap-2">
+              {MODALIDADES.map((m) => (
+                <label
+                  key={m}
+                  className={`flex cursor-pointer gap-2.5 rounded-lg border p-3 ${
+                    modalidad === m
+                      ? "border-campo-500 bg-campo-50"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="modalidad"
+                    value={m}
+                    checked={modalidad === m}
+                    onChange={() => setModalidad(m)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">
+                      {ETIQUETA_MODALIDAD[m]}
+                    </span>
+                    <span className="block text-xs text-slate-500">
+                      {DESCRIPCION_MODALIDAD[m]}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -255,6 +335,12 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
           </p>
         )}
 
+        {avisoReserva && (
+          <p className="rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-900">
+            {avisoReserva}
+          </p>
+        )}
+
         {resultado && pais && region && (
           <ResultadoMatching
             resultado={resultado}
@@ -264,6 +350,10 @@ export function FormularioSolicitud({ paises, regiones, productores }: Props) {
             mostrarListaEspera={listaEsperaAbierta}
             onAbrirListaEspera={() => setListaEsperaAbierta(true)}
             onCerrarListaEspera={() => setListaEsperaAbierta(false)}
+            onReservar={reservar}
+            reservando={reservando}
+            anuncioReservado={reservado}
+            onCambiarModalidad={cambiarModalidad}
           />
         )}
       </div>

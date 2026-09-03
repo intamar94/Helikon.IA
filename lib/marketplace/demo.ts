@@ -1,5 +1,6 @@
 import { ejecutarMatching, type ResultadoMatching } from "./matching";
 import {
+  ANUNCIOS_SEED,
   CERTIFICACIONES_SEED,
   DRONES_SEED,
   OPERADORES_SEED,
@@ -18,6 +19,7 @@ export const DATASET_DEMO: DatasetMatching = {
   operadores: OPERADORES_SEED,
   certificaciones: CERTIFICACIONES_SEED,
   drones: DRONES_SEED,
+  anuncios: ANUNCIOS_SEED,
   productores: PRODUCTORES_SEED,
 };
 
@@ -48,6 +50,7 @@ export const FLUJOS_DEMO: FlujoDemo[] = [
       region_id: "co-antioquia",
       cultivo: "banano",
       servicio: "fumigacion",
+      modalidad: "con_piloto",
       hectareas: 120,
       fecha_deseada: "2026-09-20",
       producto_a_aplicar: "Mancozeb 80% WP",
@@ -65,6 +68,7 @@ export const FLUJOS_DEMO: FlujoDemo[] = [
       region_id: "ar-buenos-aires",
       cultivo: "soja",
       servicio: "fumigacion",
+      modalidad: "con_piloto",
       hectareas: 400,
       fecha_deseada: "2026-10-05",
       producto_a_aplicar: "Glifosato 48% SL",
@@ -83,9 +87,51 @@ export const FLUJOS_DEMO: FlujoDemo[] = [
       region_id: "co-valle",
       cultivo: "banano",
       servicio: "fumigacion",
+      modalidad: "con_piloto",
       hectareas: 120,
       fecha_deseada: "2026-09-20",
       producto_a_aplicar: "Azoxistrobina 25% SC (bajo impacto)",
+    },
+  },
+  {
+    numero: 4,
+    titulo: "Alquiler con licencia propia → el productor vuela",
+    descripcion:
+      "Misma zona y regla que el flujo 3, pero en modalidad alquiler. Acá no " +
+      "vuela el operador sino el productor, así que la licencia se le exige a " +
+      "él: Hacienda El Palmar tiene el aval de la CVC a nombre propio, así que " +
+      "puede llevarse el equipo. Cambia también el precio: por jornada, no por " +
+      "hectárea.",
+    entrada: {
+      productor_id: "pr-el-palmar",
+      pais_id: "co",
+      region_id: "co-valle",
+      cultivo: "banano",
+      servicio: "fumigacion",
+      modalidad: "alquiler",
+      hectareas: 120,
+      fecha_deseada: "2026-09-20",
+      producto_a_aplicar: "Azoxistrobina 25% SC (bajo impacto)",
+    },
+  },
+  {
+    numero: 5,
+    titulo: "Alquiler sin licencia propia → rechaza y ofrece ir con piloto",
+    descripcion:
+      "Mismo pedido del flujo 1, pero en alquiler. Finca La Esperanza no tiene " +
+      "licencia de aplicador a su nombre, así que no puede volar. El motor no " +
+      "manda a lista de espera: la zona está habilitada y el mismo trabajo se " +
+      "resuelve hoy con piloto, así que sugiere cambiar de modalidad.",
+    entrada: {
+      productor_id: "pr-la-esperanza",
+      pais_id: "co",
+      region_id: "co-antioquia",
+      cultivo: "banano",
+      servicio: "fumigacion",
+      modalidad: "alquiler",
+      hectareas: 120,
+      fecha_deseada: "2026-09-20",
+      producto_a_aplicar: "Mancozeb 80% WP",
     },
   },
 ];

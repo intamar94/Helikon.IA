@@ -1,5 +1,6 @@
 import type {
-  CertificacionOperador,
+  Anuncio,
+  Certificacion,
   DatasetMatching,
   Dron,
   EstadoGeografico,
@@ -39,13 +40,26 @@ export interface AltaOperador {
     vigente_hasta: string;
     documento_url: string | null;
   }>;
+  /** Cada dron llega con sus anuncios: con piloto, en alquiler, o ambos. */
   drones: Array<{
     modelo: string;
     capacidad_carga_litros: number;
-    servicios_ofrecidos: Dron["servicios_ofrecidos"];
     hectareas_por_hora: number;
-    precio_base_hectarea_usd: number;
+    anuncios: Array<{
+      modalidad: Anuncio["modalidad"];
+      servicios_ofrecidos: Anuncio["servicios_ofrecidos"];
+      precio_hectarea_usd: number | null;
+      precio_dia_usd: number | null;
+      horas_por_jornada: number;
+    }>;
   }>;
+}
+
+/** Datos que quedan registrados al reservar una opción del matching. */
+export interface AsignacionSolicitud {
+  anuncio_asignado_id: string;
+  operador_asignado_id: string;
+  precio_acordado_usd: number;
 }
 
 export interface AltaListaEspera {
@@ -77,20 +91,26 @@ export interface MarketplaceRepository {
   eliminarRegla(id: string): Promise<void>;
 
   listarOperadores(): Promise<Operador[]>;
-  listarCertificaciones(): Promise<CertificacionOperador[]>;
+  listarCertificaciones(): Promise<Certificacion[]>;
   listarDrones(): Promise<Dron[]>;
+  listarAnuncios(): Promise<Anuncio[]>;
   crearOperador(alta: AltaOperador): Promise<Operador>;
   verificarOperador(id: string, verificado: boolean): Promise<Operador>;
   revisarDocumento(
     certificacionId: string,
     revisado: boolean,
-  ): Promise<CertificacionOperador>;
+  ): Promise<Certificacion>;
 
   listarProductores(): Promise<Productor[]>;
 
   listarSolicitudes(): Promise<Solicitud[]>;
   registrarSolicitud(
     solicitud: Omit<Solicitud, "id" | "creada_en">,
+  ): Promise<Solicitud>;
+  obtenerSolicitud(id: string): Promise<Solicitud | null>;
+  asignarSolicitud(
+    id: string,
+    asignacion: AsignacionSolicitud,
   ): Promise<Solicitud>;
 
   listarListaEspera(): Promise<ListaEspera[]>;

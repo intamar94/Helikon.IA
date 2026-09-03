@@ -7,6 +7,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  ANUNCIOS_SEED,
   CERTIFICACIONES_SEED,
   DRONES_SEED,
   OPERADORES_SEED,
@@ -133,10 +134,11 @@ const bloques: string[] = [
     ]),
   ),
   insertar(
-    "mkt_certificaciones_operador",
+    "mkt_certificaciones",
     [
       "id",
-      "operador_id",
+      "titular_tipo",
+      "titular_id",
       "pais_id",
       "tipo_certificacion",
       "numero",
@@ -146,7 +148,8 @@ const bloques: string[] = [
     ],
     CERTIFICACIONES_SEED.map((c) => [
       c.id,
-      c.operador_id,
+      c.titular_tipo,
+      c.titular_id,
       c.pais_id,
       c.tipo_certificacion,
       c.numero,
@@ -157,23 +160,37 @@ const bloques: string[] = [
   ),
   insertar(
     "mkt_drones",
-    [
-      "id",
-      "operador_id",
-      "modelo",
-      "capacidad_carga_litros",
-      "servicios_ofrecidos",
-      "hectareas_por_hora",
-      "precio_base_hectarea_usd",
-    ],
+    ["id", "operador_id", "modelo", "capacidad_carga_litros", "hectareas_por_hora"],
     DRONES_SEED.map((d) => [
       d.id,
       d.operador_id,
       d.modelo,
       d.capacidad_carga_litros,
-      d.servicios_ofrecidos,
       d.hectareas_por_hora,
-      d.precio_base_hectarea_usd,
+    ]),
+  ),
+  "-- Anuncios: un dron puede publicarse con piloto y en alquiler a la vez.",
+  insertar(
+    "mkt_anuncios",
+    [
+      "id",
+      "dron_id",
+      "modalidad",
+      "servicios_ofrecidos",
+      "precio_hectarea_usd",
+      "precio_dia_usd",
+      "horas_por_jornada",
+      "activo",
+    ],
+    ANUNCIOS_SEED.map((a) => [
+      a.id,
+      a.dron_id,
+      a.modalidad,
+      a.servicios_ofrecidos,
+      a.precio_hectarea_usd,
+      a.precio_dia_usd,
+      a.horas_por_jornada,
+      a.activo,
     ]),
   ),
   insertar(

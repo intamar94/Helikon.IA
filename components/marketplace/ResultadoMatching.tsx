@@ -3,12 +3,16 @@
 import { EstadoBadge } from "./EstadoBadge";
 import { FormularioListaEspera } from "./FormularioListaEspera";
 import {
+  CLASES_MODALIDAD,
+  ETIQUETA_MODALIDAD,
   ETIQUETA_SERVICIO,
   formatearHoras,
   formatearUSD,
+  pluralizar,
+  UNIDAD_PRECIO,
 } from "@/lib/marketplace/labels";
 import type { ResultadoMatching as Resultado } from "@/lib/marketplace/matching";
-import type { Pais, Region } from "@/lib/marketplace/types";
+import type { Modalidad, Pais, Region } from "@/lib/marketplace/types";
 
 interface Props {
   resultado: Resultado;
@@ -18,6 +22,11 @@ interface Props {
   mostrarListaEspera: boolean;
   onAbrirListaEspera: () => void;
   onCerrarListaEspera: () => void;
+  /** Reserva del anuncio. Ausente cuando la vista es de sólo lectura. */
+  onReservar?: (anuncioId: string) => void;
+  reservando?: string | null;
+  anuncioReservado?: string | null;
+  onCambiarModalidad?: (modalidad: Modalidad) => void;
 }
 
 export function ResultadoMatching({
@@ -28,6 +37,10 @@ export function ResultadoMatching({
   mostrarListaEspera,
   onAbrirListaEspera,
   onCerrarListaEspera,
+  onReservar,
+  reservando = null,
+  anuncioReservado = null,
+  onCambiarModalidad,
 }: Props) {
   if (resultado.estado === "rechazada") {
     return (
@@ -70,6 +83,22 @@ export function ResultadoMatching({
             <p className="mt-1 font-medium text-amber-800">
               Verificada: {resultado.regla_aplicada.verificada ? "sí" : "no"}
             </p>
+          </div>
+        )}
+
+        {resultado.sugerir_modalidad && onCambiarModalidad && (
+          <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3">
+            <p className="text-xs text-sky-900">
+              Esta zona sí está habilitada. El mismo trabajo se puede pedir{" "}
+              <strong>{ETIQUETA_MODALIDAD[resultado.sugerir_modalidad].toLowerCase()}</strong>.
+            </p>
+            <button
+              type="button"
+              onClick={() => onCambiarModalidad(resultado.sugerir_modalidad!)}
+              className="mkt-btn-primario mt-3"
+            >
+              Buscar {ETIQUETA_MODALIDAD[resultado.sugerir_modalidad].toLowerCase()}
+            </button>
           </div>
         )}
 
@@ -173,15 +202,19 @@ export function ResultadoMatching({
         </div>
 
         <p className="mt-3 text-xs text-emerald-900/80">
-          Embudo: {resultado.traza.operadores_evaluados} operadores verificados →{" "}
-          {resultado.traza.operadores_con_certificacion} con certificación
-          vigente → {resultado.traza.drones_con_servicio} drones con el servicio.
+          Embudo: {resultado.traza.operadores_evaluados} operadores verificados
+          → {resultado.traza.operadores_con_certificacion} habilitados por la
+          certificación{" "}
+          {resultado.traza.titular_exigido === "productor"
+            ? "(en alquiler la licencia es tuya, así que valen todos)"
+            : "del operador"}{" "}
+          → {resultado.traza.anuncios_disponibles} anuncios con el servicio.
         </p>
       </div>
 
       <ol className="space-y-3">
         {resultado.opciones.map((opcion, indice) => (
-          <li key={opcion.dron.id} className="mkt-card p-5">
+          <li key={opcion.anuncio.id} className="mkt-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-slate-400">
@@ -191,17 +224,34 @@ export function ResultadoMatching({
                   {opcion.operador.nombre}
                 </h3>
                 <p className="text-sm text-slate-600">
-                  {opcion.dron.modelo} · {opcion.dron.capacidad_carga_litros} L ·{" "}
-                  {opcion.dron.hectareas_por_hora} ha/h
+                  {opcion.dron.modelo}
+                  {opcion.dron.capacidad_carga_litros > 0
+                    ? ` · ${opcion.dron.capacidad_carga_litros} L`
+                    : ""}{" "}
+                  · {opcion.dron.hectareas_por_hora} ha/h
                 </p>
+                <span
+                  className={`mkt-chip mt-2 ${CLASES_MODALIDAD[opcion.modalidad]}`}
+                >
+                  {ETIQUETA_MODALIDAD[opcion.modalidad]}
+                </span>
               </div>
               <div className="text-right">
                 <p className="text-xl font-bold text-slate-900">
-                  {formatearUSD(opcion.precio_estimado_hectarea_usd)}
-                  <span className="text-sm font-medium text-slate-500">/ha</span>
+                  {formatearUSD(opcion.precio_estimado_total_usd)}
                 </p>
                 <p className="text-xs text-slate-500">
-                  total estimado {formatearUSD(opcion.precio_estimado_total_usd)}
+                  {opcion.modalidad === "alquiler"
+                    ? `${pluralizar(
+                        opcion.dias_alquiler ?? 1,
+                        "jornada",
+                        "jornadas",
+                      )} · ${formatearUSD(
+                        opcion.anuncio.precio_dia_usd ?? 0,
+                      )} ${UNIDAD_PRECIO.alquiler}`
+                    : `${formatearUSD(
+                        opcion.precio_estimado_hectarea_usd,
+                      )} por hectárea`}
                 </p>
               </div>
             </div>
@@ -239,7 +289,10 @@ export function ResultadoMatching({
 
             <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs">
               <p className="font-semibold uppercase tracking-wide text-slate-500">
-                Certificación que respalda la habilitación
+                Certificación que respalda la habilitación ·{" "}
+                {opcion.titular_certificacion === "productor"
+                  ? "tuya"
+                  : "del operador"}
               </p>
               <p className="mt-1 text-slate-800">
                 {opcion.certificacion.tipo_certificacion} · Nº{" "}
@@ -248,12 +301,31 @@ export function ResultadoMatching({
               </p>
             </div>
 
-            <p className="mt-3 text-xs text-slate-500">
-              Servicios del dron:{" "}
-              {opcion.dron.servicios_ofrecidos
-                .map((s) => ETIQUETA_SERVICIO[s])
-                .join(" · ")}
-            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                Servicios del anuncio:{" "}
+                {opcion.anuncio.servicios_ofrecidos
+                  .map((s) => ETIQUETA_SERVICIO[s])
+                  .join(" · ")}
+              </p>
+              {onReservar &&
+                (anuncioReservado === opcion.anuncio.id ? (
+                  <span className="mkt-chip bg-emerald-100 text-emerald-800 ring-emerald-600/30">
+                    Reservado
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={reservando !== null || anuncioReservado !== null}
+                    onClick={() => onReservar(opcion.anuncio.id)}
+                    className="mkt-btn-primario"
+                  >
+                    {reservando === opcion.anuncio.id
+                      ? "Reservando…"
+                      : "Reservar"}
+                  </button>
+                ))}
+            </div>
           </li>
         ))}
       </ol>

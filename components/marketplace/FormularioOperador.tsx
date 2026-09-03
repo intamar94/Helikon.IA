@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { EstadoBadge } from "./EstadoBadge";
-import { ETIQUETA_SERVICIO } from "@/lib/marketplace/labels";
-import type { Pais, Servicio } from "@/lib/marketplace/types";
-import { SERVICIOS } from "@/lib/marketplace/types";
+import {
+  DESCRIPCION_MODALIDAD,
+  ETIQUETA_MODALIDAD,
+  ETIQUETA_SERVICIO,
+} from "@/lib/marketplace/labels";
+import type { Modalidad, Pais, Servicio } from "@/lib/marketplace/types";
+import { MODALIDADES, SERVICIOS } from "@/lib/marketplace/types";
 
 interface CertificacionForm {
   pais_id: string;
@@ -14,12 +18,18 @@ interface CertificacionForm {
   documento_url: string;
 }
 
+interface AnuncioForm {
+  modalidad: Modalidad;
+  activo: boolean;
+  servicios_ofrecidos: Servicio[];
+  precio: string;
+}
+
 interface DronForm {
   modelo: string;
   capacidad_carga_litros: string;
-  servicios_ofrecidos: Servicio[];
   hectareas_por_hora: string;
-  precio_base_hectarea_usd: string;
+  anuncios: AnuncioForm[];
 }
 
 const certVacia = (paisId: string): CertificacionForm => ({
@@ -33,9 +43,21 @@ const certVacia = (paisId: string): CertificacionForm => ({
 const dronVacio = (): DronForm => ({
   modelo: "",
   capacidad_carga_litros: "40",
-  servicios_ofrecidos: ["fumigacion"],
   hectareas_por_hora: "15",
-  precio_base_hectarea_usd: "12",
+  anuncios: [
+    {
+      modalidad: "con_piloto",
+      activo: true,
+      servicios_ofrecidos: ["fumigacion"],
+      precio: "12",
+    },
+    {
+      modalidad: "alquiler",
+      activo: false,
+      servicios_ofrecidos: ["fumigacion"],
+      precio: "420",
+    },
+  ],
 });
 
 export function FormularioOperador({ paises }: { paises: Pais[] }) {
@@ -66,16 +88,45 @@ export function FormularioOperador({ paises }: { paises: Pais[] }) {
     );
   }
 
-  function alternarServicio(indice: number, servicio: Servicio) {
+  function actualizarAnuncio(
+    dron: number,
+    modalidad: Modalidad,
+    cambios: Partial<AnuncioForm>,
+  ) {
+    setDrones((previos) =>
+      previos.map((d, i) =>
+        i === dron
+          ? {
+              ...d,
+              anuncios: d.anuncios.map((a) =>
+                a.modalidad === modalidad ? { ...a, ...cambios } : a,
+              ),
+            }
+          : d,
+      ),
+    );
+  }
+
+  function alternarServicio(
+    dron: number,
+    modalidad: Modalidad,
+    servicio: Servicio,
+  ) {
     setDrones((previos) =>
       previos.map((d, i) => {
-        if (i !== indice) return d;
-        const incluido = d.servicios_ofrecidos.includes(servicio);
+        if (i !== dron) return d;
         return {
           ...d,
-          servicios_ofrecidos: incluido
-            ? d.servicios_ofrecidos.filter((s) => s !== servicio)
-            : [...d.servicios_ofrecidos, servicio],
+          anuncios: d.anuncios.map((a) => {
+            if (a.modalidad !== modalidad) return a;
+            const incluido = a.servicios_ofrecidos.includes(servicio);
+            return {
+              ...a,
+              servicios_ofrecidos: incluido
+                ? a.servicios_ofrecidos.filter((s) => s !== servicio)
+                : [...a.servicios_ofrecidos, servicio],
+            };
+          }),
         };
       }),
     );
@@ -104,9 +155,18 @@ export function FormularioOperador({ paises }: { paises: Pais[] }) {
           drones: drones.map((d) => ({
             modelo: d.modelo,
             capacidad_carga_litros: Number(d.capacidad_carga_litros),
-            servicios_ofrecidos: d.servicios_ofrecidos,
             hectareas_por_hora: Number(d.hectareas_por_hora),
-            precio_base_hectarea_usd: Number(d.precio_base_hectarea_usd),
+            anuncios: d.anuncios
+              .filter((a) => a.activo)
+              .map((a) => ({
+                modalidad: a.modalidad,
+                servicios_ofrecidos: a.servicios_ofrecidos,
+                precio_hectarea_usd:
+                  a.modalidad === "con_piloto" ? Number(a.precio) : null,
+                precio_dia_usd:
+                  a.modalidad === "alquiler" ? Number(a.precio) : null,
+                horas_por_jornada: 6,
+              })),
           })),
         }),
       });
@@ -138,9 +198,11 @@ export function FormularioOperador({ paises }: { paises: Pais[] }) {
           Alta de operador de dron
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Cargá tus certificaciones por país. Cada regla de cumplimiento exige
-          una certificación puntual: sin ella no te vamos a proponer para ese
-          cultivo y servicio, aunque tu dron sí pueda hacerlo.
+          Cargá tus certificaciones por país y decidí cómo publicás cada dron.
+          En los anuncios <strong>con piloto</strong> la licencia la ponés vos,
+          así que sin la certificación que pide la regla no te proponemos. En{" "}
+          <strong>alquiler</strong> vuela el cliente: ahí la licencia la tiene
+          que poner él, y tu equipo aparece igual.
         </p>
       </header>
 
@@ -402,45 +464,97 @@ export function FormularioOperador({ paises }: { paises: Pais[] }) {
                     className="mkt-campo"
                   />
                 </div>
-                <div>
-                  <label className="mkt-label">Precio base USD/ha</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={dron.precio_base_hectarea_usd}
-                    onChange={(e) =>
-                      actualizarDron(indice, {
-                        precio_base_hectarea_usd: e.target.value,
-                      })
-                    }
-                    className="mkt-campo"
-                  />
-                </div>
               </div>
 
-              <fieldset className="mt-3">
-                <legend className="mkt-label">Servicios que ofrece</legend>
-                <div className="flex flex-wrap gap-2">
-                  {SERVICIOS.map((s) => {
-                    const activo = dron.servicios_ofrecidos.includes(s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => alternarServicio(indice, s)}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${
-                          activo
-                            ? "bg-campo-600 text-white ring-campo-600"
-                            : "bg-white text-slate-600 ring-slate-300"
-                        }`}
-                      >
-                        {ETIQUETA_SERVICIO[s]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </fieldset>
+              <div className="mt-4 space-y-3">
+                <p className="mkt-label">Cómo lo publicás</p>
+                {dron.anuncios.map((anuncio) => (
+                  <div
+                    key={anuncio.modalidad}
+                    className={`rounded-lg border p-3 ${
+                      anuncio.activo
+                        ? "border-campo-300 bg-white"
+                        : "border-slate-200 bg-white/50"
+                    }`}
+                  >
+                    <label className="flex cursor-pointer items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={anuncio.activo}
+                        onChange={(e) =>
+                          actualizarAnuncio(indice, anuncio.modalidad, {
+                            activo: e.target.checked,
+                          })
+                        }
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800">
+                          {ETIQUETA_MODALIDAD[anuncio.modalidad]}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {DESCRIPCION_MODALIDAD[anuncio.modalidad]}
+                        </span>
+                      </span>
+                    </label>
+
+                    {anuncio.activo && (
+                      <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                        <div>
+                          <label className="mkt-label">
+                            {anuncio.modalidad === "alquiler"
+                              ? "Precio USD por jornada de 6 h"
+                              : "Precio USD por hectárea"}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={anuncio.precio}
+                            onChange={(e) =>
+                              actualizarAnuncio(indice, anuncio.modalidad, {
+                                precio: e.target.value,
+                              })
+                            }
+                            required
+                            className="mkt-campo"
+                          />
+                        </div>
+                        <fieldset>
+                          <legend className="mkt-label">
+                            Servicios de este anuncio
+                          </legend>
+                          <div className="flex flex-wrap gap-2">
+                            {SERVICIOS.map((s) => {
+                              const on = anuncio.servicios_ofrecidos.includes(s);
+                              return (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() =>
+                                    alternarServicio(
+                                      indice,
+                                      anuncio.modalidad,
+                                      s,
+                                    )
+                                  }
+                                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${
+                                    on
+                                      ? "bg-campo-600 text-white ring-campo-600"
+                                      : "bg-white text-slate-600 ring-slate-300"
+                                  }`}
+                                >
+                                  {ETIQUETA_SERVICIO[s]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </fieldset>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               {drones.length > 1 && (
                 <button

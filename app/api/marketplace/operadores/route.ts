@@ -7,7 +7,9 @@ import {
   ErrorEntrada,
   fechaISO,
   lista,
+  modalidad,
   numero,
+  numeroOpcional,
   numeroPositivo,
   serviciosLista,
   texto,
@@ -19,12 +21,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const repo = getRepository();
-    const [operadores, certificaciones, drones] = await Promise.all([
+    const [operadores, certificaciones, drones, anuncios] = await Promise.all([
       repo.listarOperadores(),
       repo.listarCertificaciones(),
       repo.listarDrones(),
+      repo.listarAnuncios(),
     ]);
-    return NextResponse.json({ operadores, certificaciones, drones });
+    return NextResponse.json({ operadores, certificaciones, drones, anuncios });
   } catch (error) {
     return respuestaDeError(error);
   }
@@ -49,13 +52,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const drones = lista(cuerpo, "drones").map((d) => ({
-      modelo: texto(d, "modelo"),
-      capacidad_carga_litros: numero(d, "capacidad_carga_litros"),
-      servicios_ofrecidos: serviciosLista(d, "servicios_ofrecidos"),
-      hectareas_por_hora: numeroPositivo(d, "hectareas_por_hora"),
-      precio_base_hectarea_usd: numero(d, "precio_base_hectarea_usd"),
-    }));
+    const drones = lista(cuerpo, "drones").map((d) => {
+      const anuncios = lista(d, "anuncios").map((a) => {
+        const modo = modalidad(a);
+        const porHectarea = numeroOpcional(a, "precio_hectarea_usd");
+        const porDia = numeroOpcional(a, "precio_dia_usd");
+
+        // Cada modalidad se cobra con su propia tarifa, y sólo con la suya.
+        if (modo === "con_piloto" && porHectarea === null) {
+          throw new ErrorEntrada(
+            "Un anuncio con piloto necesita un precio por hectárea.",
+          );
+        }
+        if (modo === "alquiler" && porDia === null) {
+          throw new ErrorEntrada(
+            "Un anuncio de alquiler necesita un precio por día.",
+          );
+        }
+
+        return {
+          modalidad: modo,
+          servicios_ofrecidos: serviciosLista(a, "servicios_ofrecidos"),
+          precio_hectarea_usd: modo === "con_piloto" ? porHectarea : null,
+          precio_dia_usd: modo === "alquiler" ? porDia : null,
+          horas_por_jornada: numeroOpcional(a, "horas_por_jornada") ?? 6,
+        };
+      });
+
+      if (anuncios.length === 0) {
+        throw new ErrorEntrada(
+          `El dron «${texto(d, "modelo")}» necesita al menos un anuncio: con ` +
+            "piloto, en alquiler, o los dos.",
+        );
+      }
+
+      return {
+        modelo: texto(d, "modelo"),
+        capacidad_carga_litros: numero(d, "capacidad_carga_litros"),
+        hectareas_por_hora: numeroPositivo(d, "hectareas_por_hora"),
+        anuncios,
+      };
+    });
 
     if (drones.length === 0) {
       throw new ErrorEntrada("Cargá al menos un dron en la flota.");

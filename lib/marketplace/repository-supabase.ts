@@ -2,11 +2,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   AltaListaEspera,
   AltaOperador,
+  AsignacionSolicitud,
   MarketplaceRepository,
   NuevaRegla,
 } from "./repository";
 import type {
-  CertificacionOperador,
+  Anuncio,
+  Certificacion,
   DatasetMatching,
   Dron,
   EstadoGeografico,
@@ -24,8 +26,9 @@ const TABLAS = {
   regiones: "mkt_regiones",
   reglas: "mkt_reglas_cumplimiento",
   operadores: "mkt_operadores",
-  certificaciones: "mkt_certificaciones_operador",
+  certificaciones: "mkt_certificaciones",
   drones: "mkt_drones",
+  anuncios: "mkt_anuncios",
   productores: "mkt_productores",
   solicitudes: "mkt_solicitudes",
   lista_espera: "mkt_lista_espera",
@@ -78,14 +81,16 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
         operadores,
         certificaciones,
         drones,
+        anuncios,
         productores,
       ] = await Promise.all([
         seleccionar<Pais>(db, TABLAS.paises),
         seleccionar<Region>(db, TABLAS.regiones),
         seleccionar<ReglaCumplimiento>(db, TABLAS.reglas),
         seleccionar<Operador>(db, TABLAS.operadores),
-        seleccionar<CertificacionOperador>(db, TABLAS.certificaciones),
+        seleccionar<Certificacion>(db, TABLAS.certificaciones),
         seleccionar<Dron>(db, TABLAS.drones),
+        seleccionar<Anuncio>(db, TABLAS.anuncios),
         seleccionar<Productor>(db, TABLAS.productores),
       ]);
       return {
@@ -95,6 +100,7 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
         operadores,
         certificaciones,
         drones,
+        anuncios,
         productores,
       };
     },
@@ -104,8 +110,9 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
     listarReglas: () => seleccionar<ReglaCumplimiento>(db, TABLAS.reglas),
     listarOperadores: () => seleccionar<Operador>(db, TABLAS.operadores),
     listarCertificaciones: () =>
-      seleccionar<CertificacionOperador>(db, TABLAS.certificaciones),
+      seleccionar<Certificacion>(db, TABLAS.certificaciones),
     listarDrones: () => seleccionar<Dron>(db, TABLAS.drones),
+    listarAnuncios: () => seleccionar<Anuncio>(db, TABLAS.anuncios),
     listarProductores: () => seleccionar<Productor>(db, TABLAS.productores),
     listarSolicitudes: () => seleccionar<Solicitud>(db, TABLAS.solicitudes),
     listarListaEspera: () => seleccionar<ListaEspera>(db, TABLAS.lista_espera),
@@ -193,7 +200,8 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
         const { error } = await db.from(TABLAS.certificaciones).insert(
           alta.certificaciones.map((c) => ({
             ...c,
-            operador_id: operador.id,
+            titular_tipo: "operador",
+            titular_id: operador.id,
             documento_revisado: false,
           })),
         );
@@ -202,12 +210,27 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
         }
       }
 
-      if (alta.drones.length > 0) {
-        const { error } = await db
-          .from(TABLAS.drones)
-          .insert(alta.drones.map((d) => ({ ...d, operador_id: operador.id })));
-        if (error) {
-          throw new Error(`Supabase ${TABLAS.drones}: ${error.message}`);
+      for (const dron of alta.drones) {
+        const fila = await unaFila<Dron>(
+          db
+            .from(TABLAS.drones)
+            .insert({
+              operador_id: operador.id,
+              modelo: dron.modelo,
+              capacidad_carga_litros: dron.capacidad_carga_litros,
+              hectareas_por_hora: dron.hectareas_por_hora,
+            })
+            .select()
+            .single(),
+          TABLAS.drones,
+        );
+        if (dron.anuncios.length > 0) {
+          const { error } = await db.from(TABLAS.anuncios).insert(
+            dron.anuncios.map((a) => ({ ...a, dron_id: fila.id, activo: true })),
+          );
+          if (error) {
+            throw new Error(`Supabase ${TABLAS.anuncios}: ${error.message}`);
+          }
         }
       }
 
@@ -227,7 +250,7 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
     },
 
     async revisarDocumento(certificacionId: string, revisado: boolean) {
-      return unaFila<CertificacionOperador>(
+      return unaFila<Certificacion>(
         db
           .from(TABLAS.certificaciones)
           .update({ documento_revisado: revisado })
@@ -241,6 +264,34 @@ export function crearRepositorioSupabase(): MarketplaceRepository {
     async registrarSolicitud(datos) {
       return unaFila<Solicitud>(
         db.from(TABLAS.solicitudes).insert(datos).select().single(),
+        TABLAS.solicitudes,
+      );
+    },
+
+    async obtenerSolicitud(id: string) {
+      const { data, error } = await db
+        .from(TABLAS.solicitudes)
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) {
+        throw new Error(`Supabase ${TABLAS.solicitudes}: ${error.message}`);
+      }
+      return (data as Solicitud | null) ?? null;
+    },
+
+    async asignarSolicitud(id: string, asignacion: AsignacionSolicitud) {
+      return unaFila<Solicitud>(
+        db
+          .from(TABLAS.solicitudes)
+          .update({
+            ...asignacion,
+            estado: "asignada",
+            fecha_asignacion: new Date().toISOString(),
+          })
+          .eq("id", id)
+          .select()
+          .single(),
         TABLAS.solicitudes,
       );
     },

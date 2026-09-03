@@ -2,9 +2,12 @@ import Link from "next/link";
 import { EstadoBadge } from "@/components/marketplace/EstadoBadge";
 import { correrFlujosDemo, DATASET_DEMO, FECHA_DEMO } from "@/lib/marketplace/demo";
 import {
+  CLASES_MODALIDAD,
+  ETIQUETA_MODALIDAD,
   ETIQUETA_SERVICIO,
   formatearHoras,
   formatearUSD,
+  pluralizar,
 } from "@/lib/marketplace/labels";
 
 export const metadata = { title: "Demo del motor de cumplimiento" };
@@ -16,7 +19,7 @@ export default function PaginaDemo() {
     <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-bold text-slate-900">
-          Tres flujos con datos de prueba
+          Cinco flujos con datos de prueba
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
           Cada flujo corre el motor de matching completo sobre el dataset
@@ -83,6 +86,16 @@ export default function PaginaDemo() {
                     </dd>
                   </div>
                   <div>
+                    <dt className="text-xs text-slate-500">Modalidad</dt>
+                    <dd>
+                      <span
+                        className={`mkt-chip ${CLASES_MODALIDAD[entrada.modalidad]}`}
+                      >
+                        {ETIQUETA_MODALIDAD[entrada.modalidad]}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
                     <dt className="text-xs text-slate-500">Producto</dt>
                     <dd className="text-slate-800">
                       {entrada.producto_a_aplicar}
@@ -140,27 +153,45 @@ export default function PaginaDemo() {
                 )}
 
                 {resultado.estado === "rechazada" ? (
-                  resultado.ofrecer_lista_espera && (
-                    <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                      Se le ofrece al productor sumarse a la lista de espera
-                      (<code>POST /api/marketplace/lista-espera</code>). El
-                      rechazo queda registrado como señal de demanda para
-                      priorizar qué zona verificar.
-                    </p>
-                  )
+                  <>
+                    {resultado.sugerir_modalidad && (
+                      <p className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+                        La zona sí está habilitada, así que en vez de lista de
+                        espera el motor sugiere cambiar de modalidad a{" "}
+                        <strong>
+                          {ETIQUETA_MODALIDAD[
+                            resultado.sugerir_modalidad
+                          ].toLowerCase()}
+                        </strong>
+                        .
+                      </p>
+                    )}
+                    {resultado.ofrecer_lista_espera && (
+                      <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                        Se le ofrece al productor sumarse a la lista de espera
+                        (<code>POST /api/marketplace/lista-espera</code>). El
+                        rechazo queda registrado como señal de demanda para
+                        priorizar qué zona verificar.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <>
                     <p className="mt-4 text-xs text-slate-500">
                       Embudo: {resultado.traza.operadores_evaluados} operadores
-                      verificados → {resultado.traza.operadores_con_certificacion}{" "}
-                      con certificación vigente →{" "}
-                      {resultado.traza.drones_con_servicio} drones con el
+                      verificados →{" "}
+                      {resultado.traza.operadores_con_certificacion} habilitados
+                      por la certificación{" "}
+                      {resultado.traza.titular_exigido === "productor"
+                        ? "del productor"
+                        : "del operador"}{" "}
+                      → {resultado.traza.anuncios_disponibles} anuncios con el
                       servicio.
                     </p>
                     <ol className="mt-3 space-y-2">
                       {resultado.opciones.map((o, i) => (
                         <li
-                          key={o.dron.id}
+                          key={o.anuncio.id}
                           className="rounded-lg border border-slate-200 p-3 text-xs"
                         >
                           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -168,9 +199,20 @@ export default function PaginaDemo() {
                               {i + 1}. {o.operador.nombre}
                             </span>
                             <span className="font-semibold text-slate-900">
-                              {formatearUSD(o.precio_estimado_hectarea_usd)}/ha ·
-                              total{" "}
                               {formatearUSD(o.precio_estimado_total_usd)}
+                              <span className="font-normal text-slate-500">
+                                {o.modalidad === "alquiler"
+                                  ? ` · ${pluralizar(
+                                      o.dias_alquiler ?? 1,
+                                      "jornada",
+                                      "jornadas",
+                                    )} a ${formatearUSD(
+                                      o.anuncio.precio_dia_usd ?? 0,
+                                    )}`
+                                  : ` · ${formatearUSD(
+                                      o.precio_estimado_hectarea_usd,
+                                    )}/ha`}
+                              </span>
                             </span>
                           </div>
                           <p className="mt-1 text-slate-600">
@@ -179,7 +221,11 @@ export default function PaginaDemo() {
                             {formatearHoras(o.tiempo_estimado_horas)}
                           </p>
                           <p className="mt-1 text-slate-500">
-                            Respaldo: {o.certificacion.tipo_certificacion} (Nº{" "}
+                            Respaldo{" "}
+                            {o.titular_certificacion === "productor"
+                              ? "del productor"
+                              : "del operador"}
+                            : {o.certificacion.tipo_certificacion} (Nº{" "}
                             {o.certificacion.numero}, vence{" "}
                             {o.certificacion.vigente_hasta})
                           </p>

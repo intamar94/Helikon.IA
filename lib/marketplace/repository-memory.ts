@@ -1,4 +1,5 @@
 import {
+  ANUNCIOS_SEED,
   CERTIFICACIONES_SEED,
   DRONES_SEED,
   LISTA_ESPERA_SEED,
@@ -12,11 +13,13 @@ import {
 import type {
   AltaListaEspera,
   AltaOperador,
+  AsignacionSolicitud,
   MarketplaceRepository,
   NuevaRegla,
 } from "./repository";
 import type {
-  CertificacionOperador,
+  Anuncio,
+  Certificacion,
   DatasetMatching,
   Dron,
   EstadoGeografico,
@@ -34,8 +37,9 @@ interface Store {
   regiones: Region[];
   reglas: ReglaCumplimiento[];
   operadores: Operador[];
-  certificaciones: CertificacionOperador[];
+  certificaciones: Certificacion[];
   drones: Dron[];
+  anuncios: Anuncio[];
   productores: Productor[];
   solicitudes: Solicitud[];
   lista_espera: ListaEspera[];
@@ -48,9 +52,10 @@ function sembrar(): Store {
     reglas: REGLAS_SEED.map((r) => ({ ...r })),
     operadores: OPERADORES_SEED.map((o) => ({ ...o })),
     certificaciones: CERTIFICACIONES_SEED.map((c) => ({ ...c })),
-    drones: DRONES_SEED.map((d) => ({
-      ...d,
-      servicios_ofrecidos: [...d.servicios_ofrecidos],
+    drones: DRONES_SEED.map((d) => ({ ...d })),
+    anuncios: ANUNCIOS_SEED.map((a) => ({
+      ...a,
+      servicios_ofrecidos: [...a.servicios_ofrecidos],
     })),
     productores: PRODUCTORES_SEED.map((p) => ({ ...p })),
     solicitudes: SOLICITUDES_SEED.map((s) => ({ ...s })),
@@ -96,6 +101,7 @@ export const repositorioMemoria: MarketplaceRepository = {
       operadores: s.operadores,
       certificaciones: s.certificaciones,
       drones: s.drones,
+      anuncios: s.anuncios,
       productores: s.productores,
     });
   },
@@ -176,6 +182,10 @@ export const repositorioMemoria: MarketplaceRepository = {
     return clonar(store().drones);
   },
 
+  async listarAnuncios() {
+    return clonar(store().anuncios);
+  },
+
   async crearOperador(alta: AltaOperador) {
     const s = store();
     const operador: Operador = {
@@ -194,13 +204,24 @@ export const repositorioMemoria: MarketplaceRepository = {
     for (const cert of alta.certificaciones) {
       s.certificaciones.push({
         id: nuevoId("cert"),
-        operador_id: operador.id,
+        titular_tipo: "operador",
+        titular_id: operador.id,
         documento_revisado: false,
         ...cert,
       });
     }
     for (const dron of alta.drones) {
-      s.drones.push({ id: nuevoId("dr"), operador_id: operador.id, ...dron });
+      const id = nuevoId("dr");
+      s.drones.push({
+        id,
+        operador_id: operador.id,
+        modelo: dron.modelo,
+        capacidad_carga_litros: dron.capacidad_carga_litros,
+        hectareas_por_hora: dron.hectareas_por_hora,
+      });
+      for (const anuncio of dron.anuncios) {
+        s.anuncios.push({ id: nuevoId("an"), dron_id: id, activo: true, ...anuncio });
+      }
     }
     return clonar(operador);
   },
@@ -234,6 +255,22 @@ export const repositorioMemoria: MarketplaceRepository = {
       ...datos,
     };
     store().solicitudes.push(solicitud);
+    return clonar(solicitud);
+  },
+
+  async obtenerSolicitud(id) {
+    const solicitud = store().solicitudes.find((s) => s.id === id);
+    return solicitud ? clonar(solicitud) : null;
+  },
+
+  async asignarSolicitud(id, asignacion: AsignacionSolicitud) {
+    const solicitud = store().solicitudes.find((s) => s.id === id);
+    if (!solicitud) throw new Error(`Solicitud ${id} no encontrada`);
+    solicitud.estado = "asignada";
+    solicitud.anuncio_asignado_id = asignacion.anuncio_asignado_id;
+    solicitud.operador_asignado_id = asignacion.operador_asignado_id;
+    solicitud.precio_acordado_usd = asignacion.precio_acordado_usd;
+    solicitud.fecha_asignacion = new Date().toISOString();
     return clonar(solicitud);
   },
 

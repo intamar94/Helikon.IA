@@ -1,6 +1,10 @@
 import { paisPuedeActivarse, reglaEnConflicto } from "./compliance";
 import { regionPuedeActivarse } from "./geo";
-import { ejecutarMatching, type ResultadoMatching } from "./matching";
+import {
+  ejecutarMatching,
+  type OpcionMatching,
+  type ResultadoMatching,
+} from "./matching";
 import type { MarketplaceRepository, NuevaRegla } from "./repository";
 import type {
   EntradaSolicitud,
@@ -39,12 +43,17 @@ export async function procesarSolicitud(
     region_id: entrada.region_id,
     cultivo: entrada.cultivo,
     servicio: entrada.servicio,
+    modalidad: entrada.modalidad,
     hectareas: entrada.hectareas,
     fecha_deseada: entrada.fecha_deseada,
     producto_a_aplicar: entrada.producto_a_aplicar,
     estado: resultado.estado === "asignable" ? "pendiente" : "rechazada",
     motivo_rechazo: resultado.motivo,
     regla_aplicada_id: resultado.regla_aplicada?.id ?? null,
+    anuncio_asignado_id: null,
+    operador_asignado_id: null,
+    precio_acordado_usd: null,
+    fecha_asignacion: null,
   });
 
   return { resultado, solicitud };
@@ -134,4 +143,82 @@ export async function actualizarRegla(
   if (existente) throw new ErrorValidacion(mensajeConflicto(existente));
 
   return repo.actualizarRegla(id, cambios);
+}
+
+export interface ReservaConfirmada {
+  solicitud: Solicitud;
+  opcion: OpcionMatching;
+}
+
+/**
+ * Reserva una de las opciones devueltas por el matching y deja la solicitud
+ * en `asignada`.
+ *
+ * No confía en el precio ni en la habilitación que traiga el cliente: vuelve a
+ * correr el motor con los datos actuales y sólo acepta el anuncio si sigue
+ * apareciendo entre las opciones. Entre que se muestran los resultados y se
+ * aprieta el botón, la normativa pudo cambiar — es justamente el escenario que
+ * el producto promete cubrir.
+ */
+export async function reservarOpcion(
+  repo: MarketplaceRepository,
+  solicitudId: string,
+  anuncioId: string,
+  hoy: Date = new Date(),
+): Promise<ReservaConfirmada> {
+  const solicitud = await repo.obtenerSolicitud(solicitudId);
+  if (!solicitud) {
+    throw new ErrorValidacion(`Solicitud ${solicitudId} no encontrada.`);
+  }
+  if (solicitud.estado === "asignada") {
+    throw new ErrorValidacion(
+      "Esa solicitud ya tiene un anuncio reservado. Creá una nueva para " +
+        "contratar otro.",
+    );
+  }
+  if (solicitud.estado !== "pendiente") {
+    throw new ErrorValidacion(
+      `No se puede reservar una solicitud en estado «${solicitud.estado}».`,
+    );
+  }
+
+  const dataset = await repo.cargarDataset();
+  const resultado = ejecutarMatching(
+    dataset,
+    {
+      productor_id: solicitud.productor_id,
+      pais_id: solicitud.pais_id,
+      region_id: solicitud.region_id,
+      cultivo: solicitud.cultivo,
+      servicio: solicitud.servicio,
+      modalidad: solicitud.modalidad,
+      hectareas: solicitud.hectareas,
+      fecha_deseada: solicitud.fecha_deseada,
+      producto_a_aplicar: solicitud.producto_a_aplicar,
+    },
+    hoy,
+  );
+
+  if (resultado.estado !== "asignable") {
+    throw new ErrorValidacion(
+      "La normativa cambió desde que viste los resultados y esta solicitud ya " +
+        `no está habilitada: ${resultado.mensaje}`,
+    );
+  }
+
+  const opcion = resultado.opciones.find((o) => o.anuncio.id === anuncioId);
+  if (!opcion) {
+    throw new ErrorValidacion(
+      "Ese anuncio ya no está entre las opciones habilitadas. Volvé a buscar " +
+        "para ver las vigentes.",
+    );
+  }
+
+  const actualizada = await repo.asignarSolicitud(solicitudId, {
+    anuncio_asignado_id: opcion.anuncio.id,
+    operador_asignado_id: opcion.operador.id,
+    precio_acordado_usd: opcion.precio_estimado_total_usd,
+  });
+
+  return { solicitud: actualizada, opcion };
 }

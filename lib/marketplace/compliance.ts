@@ -1,4 +1,10 @@
-import type { ReglaCumplimiento, Servicio } from "./types";
+import type {
+  Certificacion,
+  Modalidad,
+  ReglaCumplimiento,
+  Servicio,
+  TitularCertificacion,
+} from "./types";
 
 export interface ConsultaRegla {
   pais_id: string;
@@ -120,6 +126,51 @@ export function reglaEnConflicto(
         (candidata.region_id === null
           ? r.region_id === null && r.pais_id === candidata.pais_id
           : r.region_id === candidata.region_id),
+    ) ?? null
+  );
+}
+
+/**
+ * Quién tiene que estar certificado según la modalidad del anuncio.
+ *
+ * Es la pregunta que ordena todo el filtro de cumplimiento: la licencia de
+ * aplicación aérea la necesita quien aprieta el gatillo, no quien es dueño del
+ * equipo. Con piloto, aplica el operador; en alquiler seco, aplica el
+ * productor y por lo tanto la licencia tiene que ser suya.
+ */
+export function titularExigido(modalidad: Modalidad): TitularCertificacion {
+  return modalidad === "alquiler" ? "productor" : "operador";
+}
+
+/**
+ * ¿Esta certificación respalda esta regla, para este titular, a esta fecha?
+ * Exige coincidencia de titular, país y tipo, y vigencia no vencida.
+ */
+export function certificacionRespalda(
+  certificacion: Certificacion,
+  regla: ReglaCumplimiento,
+  titular: { tipo: TitularCertificacion; id: string },
+  hoy: Date,
+): boolean {
+  if (certificacion.titular_tipo !== titular.tipo) return false;
+  if (certificacion.titular_id !== titular.id) return false;
+  if (certificacion.pais_id !== regla.pais_id) return false;
+  if (!coincide(certificacion.tipo_certificacion, regla.certificacion_requerida)) {
+    return false;
+  }
+  return new Date(`${certificacion.vigente_hasta}T23:59:59Z`) > hoy;
+}
+
+/** La certificación vigente de ese titular que respalda la regla, si existe. */
+export function buscarRespaldo(
+  certificaciones: Certificacion[],
+  regla: ReglaCumplimiento,
+  titular: { tipo: TitularCertificacion; id: string },
+  hoy: Date,
+): Certificacion | null {
+  return (
+    certificaciones.find((c) =>
+      certificacionRespalda(c, regla, titular, hoy),
     ) ?? null
   );
 }

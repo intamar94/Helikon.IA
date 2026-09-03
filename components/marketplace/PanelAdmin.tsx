@@ -6,7 +6,8 @@ import { AdminGeografia } from "./AdminGeografia";
 import { AdminOperadores } from "./AdminOperadores";
 import { AdminReglas } from "./AdminReglas";
 import type {
-  CertificacionOperador,
+  Anuncio,
+  Certificacion,
   Dron,
   ListaEspera,
   Operador,
@@ -21,8 +22,9 @@ interface Props {
   regiones: Region[];
   reglas: ReglaCumplimiento[];
   operadores: Operador[];
-  certificaciones: CertificacionOperador[];
+  certificaciones: Certificacion[];
   drones: Dron[];
+  anuncios: Anuncio[];
   solicitudes: Solicitud[];
   listaEspera: ListaEspera[];
   fuente: string;
@@ -117,6 +119,7 @@ export function PanelAdmin(props: Props) {
           operadores={props.operadores}
           certificaciones={props.certificaciones}
           drones={props.drones}
+          anuncios={props.anuncios}
           paises={props.paises}
           onCambio={alCambiar}
         />

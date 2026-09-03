@@ -36,14 +36,15 @@ La carpeta `reference/` conserva el prototipo original (`plataforma-prototipo.ht
 
 ## Marketplace de drones agrícolas
 
-Este repo aloja además el MVP de un marketplace multi-país que conecta
-productores con operadores de dron certificados, bajo la ruta `/marketplace`.
-Su diferenciador es el motor de cumplimiento normativo: mapea todos los países
-desde el arranque pero solo habilita transacciones donde la normativa ya fue
-verificada.
+Este repo aloja además el MVP de un marketplace multi-país de dos lados que
+conecta propietarios de drones con productores, bajo la ruta `/marketplace`.
+Cada dron se publica **con piloto** (va el operador y aplica) o **en alquiler**
+(vuela el productor), y esa elección decide a quién le exige la licencia el
+motor de cumplimiento normativo, que sólo habilita transacciones donde la
+normativa ya fue verificada.
 
 - Documentación: [`docs/MARKETPLACE_DRONES.md`](docs/MARKETPLACE_DRONES.md)
-- Demo de los tres flujos: `/marketplace/demo` o `npm run marketplace:demo`
+- Demo de los cinco flujos: `/marketplace/demo` o `npm run marketplace:demo`
 - Base de datos: `supabase/marketplace_schema.sql` + `supabase/marketplace_seed.sql`
 
 Corre en memoria por defecto (sin credenciales). Para usar Supabase, aplicar los

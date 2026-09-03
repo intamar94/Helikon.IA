@@ -10,6 +10,7 @@ import {
   paisPuedeActivarse,
   reglaEnConflicto,
   resolverRegla,
+  titularExigido,
 } from "../lib/marketplace/compliance";
 import { evaluarGateActivacion } from "../lib/marketplace/geo";
 import { ejecutarMatching } from "../lib/marketplace/matching";
@@ -24,6 +25,7 @@ const solicitud = (
   region_id: "co-antioquia",
   cultivo: "banano",
   servicio: "fumigacion",
+  modalidad: "con_piloto",
   hectareas: 120,
   fecha_deseada: "2026-09-20",
   producto_a_aplicar: "Mancozeb 80% WP",
@@ -115,7 +117,9 @@ test("flujo 1 — país activo devuelve operadores válidos", () => {
       "Licencia ICA Aplicador Aéreo",
     );
     assert.ok(opcion.operador.verificado);
-    assert.ok(opcion.dron.servicios_ofrecidos.includes("fumigacion"));
+    assert.ok(opcion.anuncio.servicios_ofrecidos.includes("fumigacion"));
+    assert.equal(opcion.modalidad, "con_piloto");
+    assert.equal(opcion.titular_certificacion, "operador");
   }
 });
 
@@ -243,4 +247,127 @@ test("una regla inactiva nunca genera conflicto", () => {
     activa: false,
   });
   assert.equal(conflicto, null);
+});
+
+// ── Modalidad: quién tiene que estar certificado ────────────────────────────
+
+test("con piloto, la certificación exigida es la del operador", () => {
+  assert.equal(titularExigido("con_piloto"), "operador");
+});
+
+test("en alquiler, la certificación exigida es la del productor", () => {
+  assert.equal(titularExigido("alquiler"), "productor");
+});
+
+test("flujo 4 — alquiler con licencia propia habilita al productor", () => {
+  const flujo = correrFlujosDemo()[3];
+  assert.equal(flujo.resultado.estado, "asignable");
+  for (const opcion of flujo.resultado.opciones) {
+    assert.equal(opcion.modalidad, "alquiler");
+    assert.equal(opcion.titular_certificacion, "productor");
+    // La licencia que respalda es la del PRODUCTOR, no la del operador.
+    assert.equal(opcion.certificacion.titular_tipo, "productor");
+    assert.equal(opcion.certificacion.titular_id, "pr-el-palmar");
+    assert.ok(opcion.dias_alquiler && opcion.dias_alquiler >= 1);
+    assert.equal(opcion.anuncio.precio_hectarea_usd, null);
+  }
+});
+
+test("flujo 5 — alquiler sin licencia propia rechaza y sugiere ir con piloto", () => {
+  const flujo = correrFlujosDemo()[4];
+  assert.equal(flujo.resultado.estado, "rechazada");
+  assert.equal(flujo.resultado.motivo, "productor_sin_certificacion");
+  assert.equal(flujo.resultado.sugerir_modalidad, "con_piloto");
+  // La zona está habilitada, así que la lista de espera no corresponde.
+  assert.equal(flujo.resultado.ofrecer_lista_espera, false);
+});
+
+test("la licencia nacional del productor no alcanza donde la región la endurece", () => {
+  // Rancho San Miguel tiene la licencia SENASICA, pero Sinaloa exige además
+  // el aval estatal: la jerarquía de reglas también aplica al productor.
+  const enSinaloa = ejecutarMatching(
+    DATASET_DEMO,
+    solicitud({
+      productor_id: "pr-san-miguel",
+      pais_id: "mx",
+      region_id: "mx-sinaloa",
+      cultivo: "maiz",
+      modalidad: "alquiler",
+      producto_a_aplicar: "Bioinsecticida Bacillus thuringiensis",
+    }),
+    FECHA_DEMO,
+  );
+  assert.equal(enSinaloa.estado, "rechazada");
+  assert.equal(enSinaloa.motivo, "productor_sin_certificacion");
+
+  // En Jalisco rige la regla nacional, que sí cubre su licencia.
+  const enJalisco = ejecutarMatching(
+    DATASET_DEMO,
+    solicitud({
+      productor_id: "pr-san-miguel",
+      pais_id: "mx",
+      region_id: "mx-jalisco",
+      cultivo: "maiz",
+      modalidad: "alquiler",
+      producto_a_aplicar: "Clorantraniliprol 20% SC",
+    }),
+    FECHA_DEMO,
+  );
+  assert.equal(enJalisco.estado, "asignable");
+});
+
+test("un anuncio sólo aparece en su propia modalidad", () => {
+  const conPiloto = correr({ region_id: "co-valle", modalidad: "con_piloto" });
+  const alquiler = correr({
+    productor_id: "pr-el-palmar",
+    region_id: "co-valle",
+    modalidad: "alquiler",
+  });
+  assert.equal(conPiloto.estado, "asignable");
+  assert.equal(alquiler.estado, "asignable");
+  for (const o of conPiloto.opciones) assert.equal(o.modalidad, "con_piloto");
+  for (const o of alquiler.opciones) assert.equal(o.modalidad, "alquiler");
+});
+
+test("el alquiler se cobra por jornada y no por hectárea", () => {
+  const r = correr({
+    productor_id: "pr-el-palmar",
+    region_id: "co-valle",
+    modalidad: "alquiler",
+    hectareas: 120,
+  });
+  assert.equal(r.estado, "asignable");
+  const opcion = r.opciones[0];
+  // 120 ha a 21 ha/h = 5,71 h de vuelo → 1 jornada de 6 h.
+  assert.equal(opcion.dias_alquiler, 1);
+  assert.equal(
+    opcion.precio_estimado_total_usd,
+    opcion.anuncio.precio_dia_usd,
+  );
+});
+
+test("más hectáreas que una jornada facturan más días de alquiler", () => {
+  const r = correr({
+    productor_id: "pr-el-palmar",
+    region_id: "co-valle",
+    modalidad: "alquiler",
+    hectareas: 400,
+  });
+  assert.equal(r.estado, "asignable");
+  // 400 ha a 21 ha/h = 19 h → 4 jornadas.
+  assert.equal(r.opciones[0].dias_alquiler, 4);
+});
+
+test("el equipo tiene que estar en el país del trabajo, también en alquiler", () => {
+  const r = correr({
+    productor_id: "pr-el-palmar",
+    region_id: "co-valle",
+    modalidad: "alquiler",
+  });
+  assert.equal(r.estado, "asignable");
+  // Cerrado Drones (Brasil) y Agro Sinaloa (México) publican anuncios de
+  // alquiler para fumigación, pero su base está en otro país.
+  for (const opcion of r.opciones) {
+    assert.equal(opcion.operador.pais_base_id, "co");
+  }
 });

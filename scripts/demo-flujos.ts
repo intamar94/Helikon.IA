@@ -6,9 +6,11 @@
  */
 import { correrFlujosDemo, DATASET_DEMO } from "../lib/marketplace/demo";
 import {
+  ETIQUETA_MODALIDAD,
   ETIQUETA_SERVICIO,
   formatearHoras,
   formatearUSD,
+  pluralizar,
 } from "../lib/marketplace/labels";
 
 const linea = (c = "─") => console.log(c.repeat(78));
@@ -36,6 +38,7 @@ for (const flujo of correrFlujosDemo()) {
     `Pedido       : ${ETIQUETA_SERVICIO[entrada.servicio]} · ${entrada.cultivo} · ` +
       `${entrada.hectareas} ha · ${entrada.fecha_deseada}`,
   );
+  console.log(`Modalidad    : ${ETIQUETA_MODALIDAD[entrada.modalidad]}`);
   console.log(`Producto     : ${entrada.producto_a_aplicar}`);
   linea();
   console.log(
@@ -65,19 +68,26 @@ for (const flujo of correrFlujosDemo()) {
 
   if (r.estado === "rechazada") {
     console.log("");
-    console.log(
-      r.ofrecer_lista_espera
-        ? "→ Se ofrece sumarse a la lista de espera (POST /api/marketplace/lista-espera)."
-        : "→ Sin acción de lista de espera.",
-    );
+    if (r.sugerir_modalidad) {
+      console.log(
+        `→ La zona está habilitada: se sugiere cambiar a «${ETIQUETA_MODALIDAD[r.sugerir_modalidad]}».`,
+      );
+    } else if (r.ofrecer_lista_espera) {
+      console.log(
+        "→ Se ofrece sumarse a la lista de espera (POST /api/marketplace/lista-espera).",
+      );
+    } else {
+      console.log("→ Sin acción de lista de espera.");
+    }
     continue;
   }
 
   console.log("");
   console.log(
     `Embudo       : ${r.traza.operadores_evaluados} operadores verificados → ` +
-      `${r.traza.operadores_con_certificacion} con certificación vigente → ` +
-      `${r.traza.drones_con_servicio} drones con el servicio`,
+      `${r.traza.operadores_con_certificacion} habilitados por la ` +
+      `certificación del ${r.traza.titular_exigido} → ` +
+      `${r.traza.anuncios_disponibles} anuncios con el servicio`,
   );
   console.log("");
   console.log(`Opciones (${r.opciones.length}):`);
@@ -95,8 +105,12 @@ for (const flujo of correrFlujosDemo()) {
         `(vuelo ${formatearHoras(o.horas_vuelo)} + traslado ${formatearHoras(o.horas_traslado)})`,
     );
     console.log(
-      `     precio    : ${formatearUSD(o.precio_estimado_hectarea_usd)}/ha · ` +
-        `total ${formatearUSD(o.precio_estimado_total_usd)}`,
+      o.modalidad === "alquiler"
+        ? `     precio    : ${pluralizar(o.dias_alquiler ?? 1, "jornada", "jornadas")} × ` +
+            `${formatearUSD(o.anuncio.precio_dia_usd ?? 0)} = ` +
+            `${formatearUSD(o.precio_estimado_total_usd)}`
+        : `     precio    : ${formatearUSD(o.precio_estimado_hectarea_usd)}/ha · ` +
+            `total ${formatearUSD(o.precio_estimado_total_usd)}`,
     );
   });
 }

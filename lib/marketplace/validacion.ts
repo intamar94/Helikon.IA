@@ -1,5 +1,10 @@
-import { SERVICIOS, ESTADOS_GEOGRAFICOS } from "./types";
-import type { EstadoGeografico, Servicio, TipoUsuario } from "./types";
+import { SERVICIOS, ESTADOS_GEOGRAFICOS, MODALIDADES } from "./types";
+import type {
+  EstadoGeografico,
+  Modalidad,
+  Servicio,
+  TipoUsuario,
+} from "./types";
 
 export class ErrorEntrada extends Error {
   readonly status = 400;
@@ -64,6 +69,22 @@ export function servicio(cuerpo: Cuerpo, campo = "servicio"): Servicio {
     );
   }
   return valor as Servicio;
+}
+
+export function modalidad(cuerpo: Cuerpo, campo = "modalidad"): Modalidad {
+  const valor = texto(cuerpo, campo);
+  if (!MODALIDADES.includes(valor as Modalidad)) {
+    throw new ErrorEntrada(
+      `«${valor}» no es una modalidad válida (${MODALIDADES.join(", ")}).`,
+    );
+  }
+  return valor as Modalidad;
+}
+
+export function numeroOpcional(cuerpo: Cuerpo, campo: string): number | null {
+  const valor = cuerpo[campo];
+  if (valor === undefined || valor === null || valor === "") return null;
+  return numero(cuerpo, campo);
 }
 
 export function estadoGeografico(

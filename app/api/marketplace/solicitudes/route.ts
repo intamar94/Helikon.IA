@@ -5,6 +5,7 @@ import { respuestaDeError } from "@/lib/marketplace/http";
 import {
   comoObjeto,
   fechaISO,
+  modalidad,
   numeroPositivo,
   servicio,
   texto,
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       region_id: texto(cuerpo, "region_id"),
       cultivo: texto(cuerpo, "cultivo"),
       servicio: servicio(cuerpo),
+      modalidad: "modalidad" in cuerpo ? modalidad(cuerpo) : "con_piloto",
       hectareas: numeroPositivo(cuerpo, "hectareas"),
       fecha_deseada: fechaISO(cuerpo, "fecha_deseada"),
       producto_a_aplicar: textoOpcional(cuerpo, "producto_a_aplicar") ?? "",

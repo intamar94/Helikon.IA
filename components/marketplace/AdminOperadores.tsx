@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ETIQUETA_SERVICIO } from "@/lib/marketplace/labels";
+import {
+  CLASES_MODALIDAD,
+  ETIQUETA_MODALIDAD,
+  ETIQUETA_SERVICIO,
+} from "@/lib/marketplace/labels";
 import type {
-  CertificacionOperador,
+  Anuncio,
+  Certificacion,
   Dron,
   Operador,
   Pais,
@@ -11,8 +16,9 @@ import type {
 
 interface Props {
   operadores: Operador[];
-  certificaciones: CertificacionOperador[];
+  certificaciones: Certificacion[];
   drones: Dron[];
+  anuncios: Anuncio[];
   paises: Pais[];
   onCambio: (mensaje: string, esError?: boolean) => void;
 }
@@ -21,6 +27,7 @@ export function AdminOperadores({
   operadores,
   certificaciones,
   drones,
+  anuncios,
   paises,
   onCambio,
 }: Props) {
@@ -52,7 +59,7 @@ export function AdminOperadores({
     <div className="space-y-4">
       {operadores.map((operador) => {
         const certs = certificaciones.filter(
-          (c) => c.operador_id === operador.id,
+          (c) => c.titular_tipo === "operador" && c.titular_id === operador.id,
         );
         const flota = drones.filter((d) => d.operador_id === operador.id);
 
@@ -174,28 +181,65 @@ export function AdminOperadores({
               </div>
 
               <div>
-                <h4 className="mkt-label">Flota</h4>
+                <h4 className="mkt-label">Flota y anuncios</h4>
                 <ul className="space-y-2">
-                  {flota.map((dron) => (
-                    <li
-                      key={dron.id}
-                      className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs"
-                    >
-                      <p className="font-semibold text-slate-800">
-                        {dron.modelo}
-                      </p>
-                      <p className="text-slate-500">
-                        {dron.capacidad_carga_litros} L ·{" "}
-                        {dron.hectareas_por_hora} ha/h · USD{" "}
-                        {dron.precio_base_hectarea_usd}/ha
-                      </p>
-                      <p className="mt-1 text-slate-500">
-                        {dron.servicios_ofrecidos
-                          .map((s) => ETIQUETA_SERVICIO[s])
-                          .join(" · ")}
-                      </p>
-                    </li>
-                  ))}
+                  {flota.map((dron) => {
+                    const publicaciones = anuncios.filter(
+                      (a) => a.dron_id === dron.id,
+                    );
+                    return (
+                      <li
+                        key={dron.id}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs"
+                      >
+                        <p className="font-semibold text-slate-800">
+                          {dron.modelo}
+                        </p>
+                        <p className="text-slate-500">
+                          {dron.capacidad_carga_litros > 0
+                            ? `${dron.capacidad_carga_litros} L · `
+                            : ""}
+                          {dron.hectareas_por_hora} ha/h
+                        </p>
+                        <ul className="mt-2 space-y-1.5">
+                          {publicaciones.map((anuncio) => (
+                            <li
+                              key={anuncio.id}
+                              className="rounded-md border border-slate-200 bg-white p-2"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={`mkt-chip ${CLASES_MODALIDAD[anuncio.modalidad]}`}
+                                >
+                                  {ETIQUETA_MODALIDAD[anuncio.modalidad]}
+                                </span>
+                                <span className="font-semibold text-slate-700">
+                                  {anuncio.modalidad === "alquiler"
+                                    ? `USD ${anuncio.precio_dia_usd}/jornada de ${anuncio.horas_por_jornada} h`
+                                    : `USD ${anuncio.precio_hectarea_usd}/ha`}
+                                </span>
+                                {!anuncio.activo && (
+                                  <span className="text-slate-400">
+                                    (inactivo)
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-slate-500">
+                                {anuncio.servicios_ofrecidos
+                                  .map((s) => ETIQUETA_SERVICIO[s])
+                                  .join(" · ")}
+                              </p>
+                            </li>
+                          ))}
+                          {publicaciones.length === 0 && (
+                            <li className="text-slate-400">
+                              Sin anuncios publicados.
+                            </li>
+                          )}
+                        </ul>
+                      </li>
+                    );
+                  })}
                   {flota.length === 0 && (
                     <li className="text-xs text-slate-400">Sin drones.</li>
                   )}

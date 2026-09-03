@@ -90,19 +90,22 @@ on conflict (id) do update set
   ubicacion_lng = excluded.ubicacion_lng
 ;
 
-insert into mkt_certificaciones_operador (id, operador_id, pais_id, tipo_certificacion, numero, vigente_hasta, documento_url, documento_revisado) values
-  ('cert-aerocampo-co', 'op-aerocampo', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2024-0431', '2027-03-31', 'https://docs.helikon.ia/cert/ICA-AA-2024-0431.pdf', true),
-  ('cert-aerocampo-co-ndvi', 'op-aerocampo', 'co', 'Registro ICA Operador de Servicios', 'ICA-ROS-2024-1180', '2027-03-31', 'https://docs.helikon.ia/cert/ICA-ROS-2024-1180.pdf', true),
-  ('cert-dronagro-co', 'op-dronagro-valle', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2025-0902', '2027-06-30', 'https://docs.helikon.ia/cert/ICA-AA-2025-0902.pdf', true),
-  ('cert-dronagro-co-cvc', 'op-dronagro-valle', 'co', 'Licencia ICA Aplicador Aéreo + Aval CVC', 'CVC-AVAL-2026-0074', '2027-06-30', 'https://docs.helikon.ia/cert/CVC-AVAL-2026-0074.pdf', true),
-  ('cert-fumiga-caribe-co', 'op-fumiga-caribe', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2022-0155', '2026-01-31', 'https://docs.helikon.ia/cert/ICA-AA-2022-0155.pdf', true),
-  ('cert-andes-co', 'op-andes-drone', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2026-0011', '2028-01-31', 'https://docs.helikon.ia/cert/ICA-AA-2026-0011.pdf', false),
-  ('cert-agro-sinaloa-mx', 'op-agro-sinaloa', 'mx', 'Licencia SENASICA Aplicador con RPAS', 'SEN-RPAS-2025-2210', '2027-12-31', 'https://docs.helikon.ia/cert/SEN-RPAS-2025-2210.pdf', true),
-  ('cert-agro-sinaloa-mx-estatal', 'op-agro-sinaloa', 'mx', 'Licencia SENASICA Aplicador con RPAS + Aval Estatal Sinaloa', 'SIN-AVAL-2026-0033', '2027-12-31', 'https://docs.helikon.ia/cert/SIN-AVAL-2026-0033.pdf', true),
-  ('cert-bajio-mx', 'op-bajio-aereo', 'mx', 'Licencia SENASICA Aplicador con RPAS', 'SEN-RPAS-2024-1902', '2027-08-31', 'https://docs.helikon.ia/cert/SEN-RPAS-2024-1902.pdf', true),
-  ('cert-cerrado-br', 'op-cerrado-drones', 'br', 'Certificado MAPA Aplicação Aérea (AEA)', 'MAPA-AEA-2025-0781', '2027-11-30', 'https://docs.helikon.ia/cert/MAPA-AEA-2025-0781.pdf', true)
+insert into mkt_certificaciones (id, titular_tipo, titular_id, pais_id, tipo_certificacion, numero, vigente_hasta, documento_url, documento_revisado) values
+  ('cert-aerocampo-co', 'operador', 'op-aerocampo', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2024-0431', '2027-03-31', 'https://docs.helikon.ia/cert/ICA-AA-2024-0431.pdf', true),
+  ('cert-aerocampo-co-ndvi', 'operador', 'op-aerocampo', 'co', 'Registro ICA Operador de Servicios', 'ICA-ROS-2024-1180', '2027-03-31', 'https://docs.helikon.ia/cert/ICA-ROS-2024-1180.pdf', true),
+  ('cert-dronagro-co', 'operador', 'op-dronagro-valle', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2025-0902', '2027-06-30', 'https://docs.helikon.ia/cert/ICA-AA-2025-0902.pdf', true),
+  ('cert-dronagro-co-cvc', 'operador', 'op-dronagro-valle', 'co', 'Licencia ICA Aplicador Aéreo + Aval CVC', 'CVC-AVAL-2026-0074', '2027-06-30', 'https://docs.helikon.ia/cert/CVC-AVAL-2026-0074.pdf', true),
+  ('cert-fumiga-caribe-co', 'operador', 'op-fumiga-caribe', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2022-0155', '2026-01-31', 'https://docs.helikon.ia/cert/ICA-AA-2022-0155.pdf', true),
+  ('cert-andes-co', 'operador', 'op-andes-drone', 'co', 'Licencia ICA Aplicador Aéreo', 'ICA-AA-2026-0011', '2028-01-31', 'https://docs.helikon.ia/cert/ICA-AA-2026-0011.pdf', false),
+  ('cert-agro-sinaloa-mx', 'operador', 'op-agro-sinaloa', 'mx', 'Licencia SENASICA Aplicador con RPAS', 'SEN-RPAS-2025-2210', '2027-12-31', 'https://docs.helikon.ia/cert/SEN-RPAS-2025-2210.pdf', true),
+  ('cert-agro-sinaloa-mx-estatal', 'operador', 'op-agro-sinaloa', 'mx', 'Licencia SENASICA Aplicador con RPAS + Aval Estatal Sinaloa', 'SIN-AVAL-2026-0033', '2027-12-31', 'https://docs.helikon.ia/cert/SIN-AVAL-2026-0033.pdf', true),
+  ('cert-bajio-mx', 'operador', 'op-bajio-aereo', 'mx', 'Licencia SENASICA Aplicador con RPAS', 'SEN-RPAS-2024-1902', '2027-08-31', 'https://docs.helikon.ia/cert/SEN-RPAS-2024-1902.pdf', true),
+  ('cert-cerrado-br', 'operador', 'op-cerrado-drones', 'br', 'Certificado MAPA Aplicação Aérea (AEA)', 'MAPA-AEA-2025-0781', '2027-11-30', 'https://docs.helikon.ia/cert/MAPA-AEA-2025-0781.pdf', true),
+  ('cert-el-palmar-co', 'productor', 'pr-el-palmar', 'co', 'Licencia ICA Aplicador Aéreo + Aval CVC', 'CVC-AVAL-2026-0210', '2027-12-31', 'https://docs.helikon.ia/cert/CVC-AVAL-2026-0210.pdf', true),
+  ('cert-san-miguel-mx', 'productor', 'pr-san-miguel', 'mx', 'Licencia SENASICA Aplicador con RPAS', 'SEN-RPAS-2026-7781', '2027-10-31', 'https://docs.helikon.ia/cert/SEN-RPAS-2026-7781.pdf', true)
 on conflict (id) do update set
-  operador_id = excluded.operador_id,
+  titular_tipo = excluded.titular_tipo,
+  titular_id = excluded.titular_id,
   pais_id = excluded.pais_id,
   tipo_certificacion = excluded.tipo_certificacion,
   numero = excluded.numero,
@@ -111,22 +114,45 @@ on conflict (id) do update set
   documento_revisado = excluded.documento_revisado
 ;
 
-insert into mkt_drones (id, operador_id, modelo, capacidad_carga_litros, servicios_ofrecidos, hectareas_por_hora, precio_base_hectarea_usd) values
-  ('dr-aerocampo-t40', 'op-aerocampo', 'DJI Agras T40', 40, array['fumigacion', 'dispersion_solidos']::mkt_servicio[], 16, 11.5),
-  ('dr-aerocampo-p4', 'op-aerocampo', 'DJI P4 Multispectral', 0, array['mapeo_ndvi']::mkt_servicio[], 55, 3.2),
-  ('dr-dronagro-t50', 'op-dronagro-valle', 'DJI Agras T50', 50, array['fumigacion', 'dispersion_solidos', 'siembra']::mkt_servicio[], 21, 12.9),
-  ('dr-fumiga-t30', 'op-fumiga-caribe', 'DJI Agras T30', 30, array['fumigacion']::mkt_servicio[], 14, 10.4),
-  ('dr-andes-t40', 'op-andes-drone', 'DJI Agras T40', 40, array['fumigacion', 'mapeo_ndvi']::mkt_servicio[], 17, 9.8),
-  ('dr-sinaloa-t50', 'op-agro-sinaloa', 'XAG P100 Pro', 50, array['fumigacion', 'dispersion_solidos', 'siembra']::mkt_servicio[], 19, 13.4),
-  ('dr-bajio-t40', 'op-bajio-aereo', 'DJI Agras T40', 40, array['fumigacion', 'mapeo_ndvi']::mkt_servicio[], 15, 12.1),
-  ('dr-cerrado-t50', 'op-cerrado-drones', 'DJI Agras T50', 50, array['fumigacion', 'siembra']::mkt_servicio[], 22, 10.9)
+insert into mkt_drones (id, operador_id, modelo, capacidad_carga_litros, hectareas_por_hora) values
+  ('dr-aerocampo-t40', 'op-aerocampo', 'DJI Agras T40', 40, 16),
+  ('dr-aerocampo-p4', 'op-aerocampo', 'DJI P4 Multispectral', 0, 55),
+  ('dr-dronagro-t50', 'op-dronagro-valle', 'DJI Agras T50', 50, 21),
+  ('dr-fumiga-t30', 'op-fumiga-caribe', 'DJI Agras T30', 30, 14),
+  ('dr-andes-t40', 'op-andes-drone', 'DJI Agras T40', 40, 17),
+  ('dr-sinaloa-t50', 'op-agro-sinaloa', 'XAG P100 Pro', 50, 19),
+  ('dr-bajio-t40', 'op-bajio-aereo', 'DJI Agras T40', 40, 15),
+  ('dr-cerrado-t50', 'op-cerrado-drones', 'DJI Agras T50', 50, 22)
 on conflict (id) do update set
   operador_id = excluded.operador_id,
   modelo = excluded.modelo,
   capacidad_carga_litros = excluded.capacidad_carga_litros,
+  hectareas_por_hora = excluded.hectareas_por_hora
+;
+
+-- Anuncios: un dron puede publicarse con piloto y en alquiler a la vez.
+insert into mkt_anuncios (id, dron_id, modalidad, servicios_ofrecidos, precio_hectarea_usd, precio_dia_usd, horas_por_jornada, activo) values
+  ('an-aerocampo-t40-piloto', 'dr-aerocampo-t40', 'con_piloto', array['fumigacion', 'dispersion_solidos']::mkt_servicio[], 11.5, null, 6, true),
+  ('an-aerocampo-t40-alquiler', 'dr-aerocampo-t40', 'alquiler', array['fumigacion', 'dispersion_solidos']::mkt_servicio[], null, 420, 6, true),
+  ('an-aerocampo-p4-piloto', 'dr-aerocampo-p4', 'con_piloto', array['mapeo_ndvi']::mkt_servicio[], 3.2, null, 6, true),
+  ('an-aerocampo-p4-alquiler', 'dr-aerocampo-p4', 'alquiler', array['mapeo_ndvi']::mkt_servicio[], null, 180, 6, true),
+  ('an-dronagro-t50-piloto', 'dr-dronagro-t50', 'con_piloto', array['fumigacion', 'dispersion_solidos', 'siembra']::mkt_servicio[], 12.9, null, 6, true),
+  ('an-dronagro-t50-alquiler', 'dr-dronagro-t50', 'alquiler', array['fumigacion', 'siembra']::mkt_servicio[], null, 480, 6, true),
+  ('an-fumiga-t30-piloto', 'dr-fumiga-t30', 'con_piloto', array['fumigacion']::mkt_servicio[], 10.4, null, 6, true),
+  ('an-andes-t40-piloto', 'dr-andes-t40', 'con_piloto', array['fumigacion', 'mapeo_ndvi']::mkt_servicio[], 9.8, null, 6, true),
+  ('an-sinaloa-t50-piloto', 'dr-sinaloa-t50', 'con_piloto', array['fumigacion', 'dispersion_solidos', 'siembra']::mkt_servicio[], 13.4, null, 6, true),
+  ('an-sinaloa-t50-alquiler', 'dr-sinaloa-t50', 'alquiler', array['fumigacion', 'siembra']::mkt_servicio[], null, 520, 6, true),
+  ('an-bajio-t40-piloto', 'dr-bajio-t40', 'con_piloto', array['fumigacion', 'mapeo_ndvi']::mkt_servicio[], 12.1, null, 6, true),
+  ('an-cerrado-t50-piloto', 'dr-cerrado-t50', 'con_piloto', array['fumigacion', 'siembra']::mkt_servicio[], 10.9, null, 6, true),
+  ('an-cerrado-t50-alquiler', 'dr-cerrado-t50', 'alquiler', array['fumigacion', 'siembra']::mkt_servicio[], null, 390, 6, true)
+on conflict (id) do update set
+  dron_id = excluded.dron_id,
+  modalidad = excluded.modalidad,
   servicios_ofrecidos = excluded.servicios_ofrecidos,
-  hectareas_por_hora = excluded.hectareas_por_hora,
-  precio_base_hectarea_usd = excluded.precio_base_hectarea_usd
+  precio_hectarea_usd = excluded.precio_hectarea_usd,
+  precio_dia_usd = excluded.precio_dia_usd,
+  horas_por_jornada = excluded.horas_por_jornada,
+  activo = excluded.activo
 ;
 
 insert into mkt_productores (id, nombre, email, pais_id, region_id, ubicacion_lat, ubicacion_lng) values
