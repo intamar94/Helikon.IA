@@ -33,3 +33,18 @@ npm run dev
 
 ## Referencia
 La carpeta `reference/` conserva el prototipo original (`plataforma-prototipo.html`) y los datos fuente (`graph-data.json`, `schema.sql`) tal como se entregaron, como referencia de diseño y comportamiento.
+
+## Marketplace de drones agrícolas
+
+Este repo aloja además el MVP de un marketplace multi-país que conecta
+productores con operadores de dron certificados, bajo la ruta `/marketplace`.
+Su diferenciador es el motor de cumplimiento normativo: mapea todos los países
+desde el arranque pero solo habilita transacciones donde la normativa ya fue
+verificada.
+
+- Documentación: [`docs/MARKETPLACE_DRONES.md`](docs/MARKETPLACE_DRONES.md)
+- Demo de los tres flujos: `/marketplace/demo` o `npm run marketplace:demo`
+- Base de datos: `supabase/marketplace_schema.sql` + `supabase/marketplace_seed.sql`
+
+Corre en memoria por defecto (sin credenciales). Para usar Supabase, aplicar los
+dos SQL y poner `MARKETPLACE_DATA_SOURCE=supabase`.

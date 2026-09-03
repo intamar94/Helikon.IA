@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Preflight de Tailwind está desactivado (tailwind.config.ts) para no pisar los
+ * estilos globales de la plataforma de aprendizaje, que viven en el mismo
+ * proyecto. Acá replicamos el reset mínimo, acotado al árbol `.mkt`.
+ */
+@layer base {
+  .mkt {
+    box-sizing: border-box;
+    min-height: 100vh;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Todo el reset va envuelto en :where() para que su especificidad sea 0 y
+   * cualquier utilidad de Tailwind (text-3xl, font-bold, m-4…) lo gane sin
+   * necesidad de !important.
+   */
+  :where(.mkt, .mkt *, .mkt *::before, .mkt *::after) {
+    box-sizing: border-box;
+    border: 0 solid #e2e8f0;
+  }
+
+  :where(.mkt) :where(h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd) {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  :where(.mkt) :where(ul, ol) {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :where(.mkt) :where(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(.mkt) :where(button, input, select, textarea, optgroup) {
+    font: inherit;
+    color: inherit;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    letter-spacing: inherit;
+  }
+
+  :where(.mkt) :where(button) {
+    cursor: pointer;
+    background-color: transparent;
+  }
+
+  :where(.mkt) :where(button:disabled) {
+    cursor: not-allowed;
+  }
+
+  :where(.mkt) :where([type="checkbox"]) {
+    cursor: pointer;
+    accent-color: #316e2d;
+    height: 0.95rem;
+    width: 0.95rem;
+  }
+
+  :where(.mkt) :where(table) {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  :where(.mkt) :where(th, td) {
+    text-align: left;
+    padding: 0;
+  }
+
+  :where(.mkt) :where(th) {
+    font-weight: inherit;
+  }
+
+  :where(.mkt) :where(code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    font-size: 0.9em;
+  }
+
+  :where(.mkt) :where(hr) {
+    border-top-width: 1px;
+  }
+
+  :where(.mkt) :where(fieldset) {
+    margin: 0;
+    padding: 0;
+  }
+
+  :where(.mkt) :where(legend) {
+    padding: 0;
+  }
+}
+
+@layer components {
+  .mkt-campo {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
+           text-slate-900 shadow-sm outline-none
+           focus:border-campo-500 focus:ring-2 focus:ring-campo-500/25;
+  }
+
+  .mkt-label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .mkt-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2
+           text-sm font-semibold transition-colors disabled:opacity-50;
+  }
+
+  .mkt-btn-primario {
+    @apply mkt-btn bg-campo-600 text-white hover:bg-campo-700;
+  }
+
+  .mkt-btn-secundario {
+    @apply mkt-btn border border-slate-300 bg-white text-slate-700
+           hover:bg-slate-50;
+  }
+
+  .mkt-card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .mkt-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs
+           font-semibold ring-1 ring-inset;
+  }
+}
